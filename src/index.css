@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: #0f172a;
+  color: #f8fafc;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Hide the cursor during idle playback; Player toggles this class. */
+.cursor-hidden,
+.cursor-hidden * {
+  cursor: none !important;
+}
