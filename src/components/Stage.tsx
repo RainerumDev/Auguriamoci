@@ -18,8 +18,13 @@ export default function Stage({ page, renderData, mediaUrls }: Props) {
 
   if (item.kind === "widget") {
     const items = renderData.get(item.widgetId) ?? [];
+    // Few items: centered column. Many: two-column grid so nothing overflows.
+    const layout =
+      items.length > 3
+        ? "grid grid-cols-2 content-center justify-items-center gap-8"
+        : "flex flex-col items-center justify-center gap-10";
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-10 overflow-hidden p-12 text-center">
+      <div className={`h-full overflow-hidden p-12 text-center ${layout}`}>
         {items.map((it, i) => (
           // Template HTML comes from the local config (trusted); data values
           // inside it are escaped by interpolate().

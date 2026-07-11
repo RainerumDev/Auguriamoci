@@ -70,12 +70,35 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
     fine ciclo; iframe saltati offline via isAvailable
   - 49 test verdi; verificato in browser end-to-end con dataset iniettato
     (pagina compleanno renderizzata, filtro data ok)
-- [ ] **Step 6 — Polish + deploy** ← PROSSIMO
-  - Icone PWA vere (192/512 png), workflow GitHub Pages deploy
-  - README con setup Google Cloud Console (client ID, origini autorizzate)
-  - Rifiniture player: layout multi-item nelle pagine widget (griglia se
-    tanti elementi), titolo widget opzionale in pagina
-  - Test manuale con dati reali dell'utente (ha già client ID + login attivi)
+- [x] **Step 6 — Polish + deploy** (iterazione 7)
+  - Icone PNG 192/512 (canvas browser → base64; 512 upscalata con sips) +
+    manifest aggiornato (maskable)
+  - `.github/workflows/deploy.yml`: test + build + Pages (abilitare
+    Pages→Source: GitHub Actions nel repo)
+  - README completo (setup Google Cloud Console, comandi, architettura)
+  - Stage: griglia 2 colonne se >3 item nella pagina widget
+
+## Richieste UTENTE (2026-07-11, priorità alta)
+
+- [ ] Editor HTML stile Word (WYSIWYG) in personalizzazione widget ← iter 7
+- [ ] Click su nome colonna inserisce placeholder alla posizione cursore ← iter 7
+- [ ] Sfondo schermata compleanni: file Drive O upload salvato base64 anche
+      nell'export config ← iter 7
+- [ ] Google Picker per scegliere file/fogli/cartelle (se possibile; richiede
+      API key oltre a client ID)
+- [ ] Editor widget Drive: elenco file della cartella + skip per-file
+      (memorizza id file da saltare)
+- [ ] Opzioni per-file media: video → audio on/off; foto → cover/crop/…;
+      per cartella: elenco con opzioni per ogni file
+
+## Backlog / migliorie possibili
+
+- Icona 512 nativa (ora upscalata da 192)
+- Anteprima live template nell'editor widget
+- Riordino widget (drag/up-down) in impostazioni
+- Paginazione Drive listing >1000 file
+- Test con dati reali utente (client ID + login già attivi)
+- Gestione quota IndexedDB (StorageManager.estimate)
 
 ## Note tecniche per le prossime iterazioni
 
