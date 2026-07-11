@@ -1,12 +1,17 @@
 import { useRef, useState } from "react";
 import {
+  createWidget,
   exportConfigJson,
   parseConfigJson,
+  WIDGET_TYPE_LABELS,
   type AppConfig,
+  type WidgetConfig,
+  type WidgetType,
 } from "../lib/config";
 import { clearAllData } from "../lib/db";
 import type { AuthState } from "../hooks/useAuth";
 import type { SyncState } from "../hooks/useSync";
+import WidgetEditor from "./WidgetEditor";
 
 interface Props {
   config: AppConfig;
@@ -26,6 +31,36 @@ export default function SettingsOverlay({
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [clientIdDraft, setClientIdDraft] = useState(config.googleClientId);
+  const [editing, setEditing] = useState<WidgetConfig | null>(null);
+
+  const saveWidget = (widget: WidgetConfig) => {
+    const exists = config.widgets.some((w) => w.id === widget.id);
+    onConfigChange({
+      ...config,
+      widgets: exists
+        ? config.widgets.map((w) => (w.id === widget.id ? widget : w))
+        : [...config.widgets, widget],
+    });
+    setEditing(null);
+  };
+
+  const deleteWidget = (id: string) => {
+    if (window.confirm("Eliminare questo widget?")) {
+      onConfigChange({
+        ...config,
+        widgets: config.widgets.filter((w) => w.id !== id),
+      });
+    }
+  };
+
+  const toggleWidget = (id: string) => {
+    onConfigChange({
+      ...config,
+      widgets: config.widgets.map((w) =>
+        w.id === id ? { ...w, enabled: !w.enabled } : w,
+      ),
+    });
+  };
 
   const saveClientId = () => {
     const trimmed = clientIdDraft.trim();
@@ -76,6 +111,14 @@ export default function SettingsOverlay({
         className="max-h-full w-full max-w-2xl overflow-y-auto rounded-2xl bg-slate-900 p-8 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
+        {editing ? (
+          <WidgetEditor
+            initial={editing}
+            onSave={saveWidget}
+            onCancel={() => setEditing(null)}
+          />
+        ) : (
+          <>
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold">Impostazioni</h2>
           <button
@@ -231,29 +274,60 @@ export default function SettingsOverlay({
           <h3 className="mb-2 text-lg font-semibold text-amber-400">
             Widget e pagine
           </h3>
-          {config.widgets.length === 0 ? (
-            <p className="text-sm text-slate-400">
-              Nessun widget configurato. L'editor dei widget arriva con il
-              login Google.
+          {config.widgets.length === 0 && (
+            <p className="mb-3 text-sm text-slate-400">
+              Nessun widget configurato: aggiungine uno qui sotto.
             </p>
-          ) : (
-            <ul className="space-y-2 text-sm">
+          )}
+          {config.widgets.length > 0 && (
+            <ul className="mb-3 space-y-2 text-sm">
               {config.widgets.map((w) => (
                 <li
                   key={w.id}
-                  className="flex items-center justify-between rounded-lg bg-slate-800 px-4 py-2"
+                  className="flex items-center gap-3 rounded-lg bg-slate-800 px-4 py-2"
                 >
-                  <span>
+                  <input
+                    type="checkbox"
+                    checked={w.enabled}
+                    onChange={() => toggleWidget(w.id)}
+                    title="Abilitato"
+                  />
+                  <span className={w.enabled ? "" : "line-through opacity-50"}>
                     {w.title}{" "}
-                    <span className="text-slate-500">({w.type})</span>
+                    <span className="text-slate-500">
+                      ({WIDGET_TYPE_LABELS[w.type]})
+                    </span>
                   </span>
-                  <span className="text-slate-400">
+                  <span className="ml-auto text-slate-400">
                     {w.page != null ? `pagina ${w.page}` : "auto"}
                   </span>
+                  <button
+                    onClick={() => setEditing(w)}
+                    className="rounded-lg bg-slate-700 px-3 py-1 text-xs hover:bg-slate-600"
+                  >
+                    Modifica
+                  </button>
+                  <button
+                    onClick={() => deleteWidget(w.id)}
+                    className="rounded-lg bg-red-900/60 px-3 py-1 text-xs text-red-200 hover:bg-red-900"
+                  >
+                    Elimina
+                  </button>
                 </li>
               ))}
             </ul>
           )}
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(WIDGET_TYPE_LABELS) as WidgetType[]).map((type) => (
+              <button
+                key={type}
+                onClick={() => setEditing(createWidget(type))}
+                className="rounded-lg border border-slate-600 px-3 py-2 text-xs font-medium hover:border-slate-400 hover:bg-slate-800"
+              >
+                + {WIDGET_TYPE_LABELS[type]}
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="mb-8">
@@ -299,6 +373,8 @@ export default function SettingsOverlay({
             <p className="mt-3 text-sm text-amber-300">{message}</p>
           )}
         </section>
+          </>
+        )}
       </div>
     </div>
   );

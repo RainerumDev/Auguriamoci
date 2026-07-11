@@ -47,15 +47,16 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
     {data_festa}; calendario: {titolo} {data_inizio} {ora_inizio}
     {descrizione} {luogo}, scarta eventi finiti
   - 37 test vitest verdi
-- [ ] **Step 4b — Editor widget (UI)** ← PROSSIMO
-  - Pannello "Widget e pagine": aggiungi/modifica/elimina/riordina widget
-  - Editor compleanni: URL sheet → fetch header → pick colonna data
-    (auto-suggest) → textarea template con anteprima placeholder
-  - Editor onomastici: scelta sorgente, pick colonna nome
-  - Editor calendario: dropdown listCalendars → template
-  - Editor drive: URL/ID cartella
-  - Campi comuni: titolo, pagina fissa (opzionale), durata override, enabled
-- [ ] **Step 5 — Timeline Manager**
+- [x] **Step 4b — Editor widget (UI)** (iterazione 5)
+  - `WidgetEditor.tsx`: form per i 4 tipi. Compleanni/onomastici: URL sheet →
+    "Carica colonne" (fetch header, auto-suggest colonna data), select colonne,
+    lookAhead. Onomastici: radio builtin/sheet. Calendario: "Carica calendari"
+    → dropdown. Drive: URL/ID con estrazione automatica. Template textarea +
+    chip placeholder cliccabili. Campi comuni: titolo/pagina/durata/enabled.
+  - SettingsOverlay: lista widget con toggle/modifica/elimina + 4 bottoni "+"
+  - Verificato in browser: add Drive → salva → persiste → elimina; editor
+    compleanni renderizza; estrazione folder ID da URL ok
+- [ ] **Step 5 — Timeline Manager** ← PROSSIMO
   - Pagine fisse per widget, prefissi numerici file Drive (`5_foo.jpg`),
     fill dei buchi con file senza prefisso, shuffle collisioni per ciclo,
     durata per pagina
@@ -82,3 +83,8 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
   useSync + vitest (13 test verdi). Build verde, zero errori console.
 - **Iter 4 (2026-07-11):** logica Step 4 completa (template, date, onomastici,
   widgetData) — 37 test verdi, build verde. UI editor rimandata a iter 5.
+- **Iter 5 (2026-07-11):** editor widget completo + gestione lista. IMPORTANTE:
+  l'UTENTE ha configurato un Client ID reale e ha fatto login vero
+  (licenza1@juvenes.it) — OAuth end-to-end confermato funzionante. Client ID
+  in config IndexedDB: NON sovrascrivere/cancellare. Niente fetch dei suoi
+  dati reali (calendari/fogli) senza richiesta esplicita.

@@ -169,3 +169,59 @@ function isWidgetConfig(w: unknown): w is WidgetConfig {
 export function newWidgetId(): string {
   return crypto.randomUUID();
 }
+
+export const WIDGET_TYPE_LABELS: Record<WidgetType, string> = {
+  birthdays: "Compleanni",
+  namedays: "Onomastici",
+  calendar: "Calendario",
+  drive: "Media da Drive",
+};
+
+/** New widget with sensible defaults for the editor. */
+export function createWidget(type: WidgetType): WidgetConfig {
+  const base = {
+    id: newWidgetId(),
+    title: WIDGET_TYPE_LABELS[type],
+    enabled: true,
+  };
+  switch (type) {
+    case "birthdays":
+      return {
+        ...base,
+        type,
+        sheetId: "",
+        sheetRange: "",
+        columns: {},
+        dateColumn: "",
+        lookAheadDays: 0,
+        template:
+          '<h1 style="font-size:4em">🎂 {Nome}</h1>\n<h3 style="font-size:2em">{data_festa}</h3>',
+      };
+    case "namedays":
+      return {
+        ...base,
+        type,
+        source: "builtin",
+        sheetId: "",
+        sheetRange: "",
+        columns: {},
+        dateColumn: "",
+        nameColumn: "",
+        lookAheadDays: 0,
+        template:
+          '<h1 style="font-size:4em">🎉 {Nome}</h1>\n<h3 style="font-size:2em">{data_festa}</h3>',
+      };
+    case "calendar":
+      return {
+        ...base,
+        type,
+        calendarId: "",
+        calendarLabel: "",
+        lookAheadDays: 0,
+        template:
+          '<h2 style="font-size:3em">{titolo}</h2>\n<p style="font-size:1.5em">{data_inizio} {ora_inizio} — {luogo}</p>',
+      };
+    case "drive":
+      return { ...base, type, folderId: "", folderLabel: "" };
+  }
+}

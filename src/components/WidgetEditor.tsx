@@ -1,0 +1,559 @@
+import { useState } from "react";
+import type {
+  CalendarWidgetConfig,
+  DriveWidgetConfig,
+  NamedaysWidgetConfig,
+  WidgetConfig,
+} from "../lib/config";
+import { WIDGET_TYPE_LABELS } from "../lib/config";
+import { getStoredToken, isTokenValid } from "../lib/google/auth";
+import { extractSheetId, fetchSheet } from "../lib/google/sheets";
+import { extractFolderId } from "../lib/google/drive";
+import { listCalendars, type CalendarListEntry } from "../lib/google/calendar";
+import { suggestDateColumn } from "../lib/dates";
+
+interface Props {
+  initial: WidgetConfig;
+  onSave: (widget: WidgetConfig) => void;
+  onCancel: () => void;
+}
+
+/** Returns a valid token or throws with a user-facing message. */
+function requireToken(): string {
+  const token = getStoredToken();
+  if (!isTokenValid(token)) {
+    throw new Error("Accedi con Google prima (sezione Account).");
+  }
+  return token.accessToken;
+}
+
+export default function WidgetEditor({ initial, onSave, onCancel }: Props) {
+  const [draft, setDraft] = useState<WidgetConfig>(() =>
+    structuredClone(initial),
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  const patch = (partial: Partial<WidgetConfig>) =>
+    setDraft((d) => ({ ...d, ...partial }) as WidgetConfig);
+
+  const save = () => {
+    setError(null);
+    try {
+      validate(draft);
+      onSave(draft);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Configurazione non valida.");
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="text-2xl font-bold">
+          {WIDGET_TYPE_LABELS[draft.type]}
+        </h2>
+        <button
+          onClick={onCancel}
+          className="rounded-lg px-3 py-1 text-sm text-slate-400 hover:bg-slate-800"
+        >
+          ← Annulla
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        <Field label="Titolo">
+          <input
+            type="text"
+            value={draft.title}
+            onChange={(e) => patch({ title: e.target.value })}
+            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm"
+          />
+        </Field>
+
+        <div className="flex gap-6">
+          <Field label="Pagina fissa (vuoto = riempimento auto)">
+            <input
+              type="number"
+              min={1}
+              value={draft.page ?? ""}
+              onChange={(e) =>
+                patch({
+                  page: e.target.value ? Number(e.target.value) : undefined,
+                })
+              }
+              className="w-28 rounded-lg bg-slate-800 px-3 py-2 text-sm"
+            />
+          </Field>
+          <Field label="Durata (sec, vuoto = default)">
+            <input
+              type="number"
+              min={3}
+              value={draft.durationSeconds ?? ""}
+              onChange={(e) =>
+                patch({
+                  durationSeconds: e.target.value
+                    ? Number(e.target.value)
+                    : undefined,
+                })
+              }
+              className="w-28 rounded-lg bg-slate-800 px-3 py-2 text-sm"
+            />
+          </Field>
+          <label className="flex items-end gap-2 pb-2 text-sm">
+            <input
+              type="checkbox"
+              checked={draft.enabled}
+              onChange={(e) => patch({ enabled: e.target.checked })}
+            />
+            Abilitato
+          </label>
+        </div>
+
+        {draft.type === "birthdays" && (
+          <SheetSourceFields
+            draft={draft}
+            patch={patch}
+            withDateColumn
+            onError={setError}
+          />
+        )}
+        {draft.type === "namedays" && (
+          <NamedaysFields draft={draft} patch={patch} onError={setError} />
+        )}
+        {draft.type === "calendar" && (
+          <CalendarFields draft={draft} patch={patch} onError={setError} />
+        )}
+        {draft.type === "drive" && <DriveFields draft={draft} patch={patch} />}
+
+        {draft.type !== "drive" && (
+          <TemplateField
+            template={draft.template}
+            placeholders={placeholdersFor(draft)}
+            onChange={(template) => patch({ template })}
+          />
+        )}
+
+        {error && <p className="text-sm text-red-400">{error}</p>}
+
+        <div className="flex gap-3 pt-2">
+          <button
+            onClick={save}
+            className="rounded-lg bg-amber-500 px-6 py-2 text-sm font-semibold text-slate-900 hover:bg-amber-400"
+          >
+            Salva widget
+          </button>
+          <button
+            onClick={onCancel}
+            className="rounded-lg bg-slate-700 px-6 py-2 text-sm font-medium hover:bg-slate-600"
+          >
+            Annulla
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function validate(w: WidgetConfig): void {
+  if (!w.title.trim()) throw new Error("Il titolo è obbligatorio.");
+  switch (w.type) {
+    case "birthdays":
+      if (!w.sheetId) throw new Error("Indica il Google Sheet.");
+      if (!w.dateColumn)
+        throw new Error("Seleziona la colonna della data di nascita.");
+      break;
+    case "namedays":
+      if (!w.sheetId) throw new Error("Indica il Google Sheet.");
+      if (w.source === "sheet" && !w.dateColumn)
+        throw new Error("Seleziona la colonna della data.");
+      if (w.source === "builtin" && !w.nameColumn)
+        throw new Error("Seleziona la colonna del nome.");
+      break;
+    case "calendar":
+      if (!w.calendarId) throw new Error("Seleziona un calendario.");
+      break;
+    case "drive":
+      if (!w.folderId) throw new Error("Indica la cartella di Drive.");
+      break;
+  }
+}
+
+function placeholdersFor(w: WidgetConfig): string[] {
+  if (w.type === "calendar") {
+    return ["titolo", "data_inizio", "ora_inizio", "descrizione", "luogo"];
+  }
+  if (w.type === "birthdays" || w.type === "namedays") {
+    return [...Object.keys(w.columns), "data_festa"];
+  }
+  return [];
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block text-sm">
+      <span className="mb-1 block text-slate-300">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+/* ---------- Sheet-based sources (birthdays + namedays) ---------- */
+
+/** Structural subset shared by birthday and nameday widgets. */
+interface SheetDraft {
+  sheetId: string;
+  sheetRange: string;
+  columns: Record<string, string>;
+  dateColumn: string;
+  nameColumn?: string;
+  lookAheadDays: number;
+}
+
+function SheetSourceFields({
+  draft,
+  patch,
+  withDateColumn,
+  withNameColumn,
+  onError,
+}: {
+  draft: SheetDraft;
+  patch: (p: Partial<SheetDraft>) => void;
+  withDateColumn?: boolean;
+  withNameColumn?: boolean;
+  onError: (msg: string | null) => void;
+}) {
+  const [sheetInput, setSheetInput] = useState(draft.sheetId);
+  const [loading, setLoading] = useState(false);
+  const headers = Object.keys(draft.columns);
+
+  const loadHeaders = async () => {
+    onError(null);
+    const id = extractSheetId(sheetInput);
+    if (!id) {
+      onError("URL o ID del foglio non valido.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const token = requireToken();
+      const payload = await fetchSheet(id, draft.sheetRange, token);
+      if (payload.header.length === 0) {
+        throw new Error("Il foglio è vuoto: nessuna intestazione trovata.");
+      }
+      const columns: Record<string, string> = {};
+      for (const h of payload.header) if (h) columns[h] = h;
+      const patchData: Partial<SheetDraft> = { sheetId: id, columns };
+      // PRD §6.1: auto-suggest the birth date column from the headers.
+      if (withDateColumn && !draft.dateColumn) {
+        const suggested = suggestDateColumn(payload.header);
+        if (suggested) patchData.dateColumn = suggested;
+      }
+      patch(patchData);
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "Caricamento fallito.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 rounded-xl bg-slate-800/50 p-4">
+      <Field label="URL o ID del Google Sheet">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={sheetInput}
+            onChange={(e) => setSheetInput(e.target.value)}
+            placeholder="https://docs.google.com/spreadsheets/d/…"
+            spellCheck={false}
+            className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs"
+          />
+          <button
+            onClick={() => void loadHeaders()}
+            disabled={loading}
+            className="shrink-0 rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium hover:bg-slate-600 disabled:opacity-50"
+          >
+            {loading ? "Carico…" : "Carica colonne"}
+          </button>
+        </div>
+      </Field>
+      <Field label="Nome del tab (vuoto = primo foglio)">
+        <input
+          type="text"
+          value={draft.sheetRange}
+          onChange={(e) => patch({ sheetRange: e.target.value })}
+          className="w-48 rounded-lg bg-slate-800 px-3 py-2 text-sm"
+        />
+      </Field>
+
+      {headers.length > 0 && (
+        <>
+          {withDateColumn && (
+            <Field label="Colonna della data">
+              <ColumnSelect
+                headers={headers}
+                value={draft.dateColumn}
+                onChange={(dateColumn) => patch({ dateColumn })}
+              />
+            </Field>
+          )}
+          {withNameColumn && (
+            <Field label="Colonna del nome">
+              <ColumnSelect
+                headers={headers}
+                value={draft.nameColumn ?? ""}
+                onChange={(nameColumn) => patch({ nameColumn })}
+              />
+            </Field>
+          )}
+        </>
+      )}
+
+      <Field label="Mostra fino a N giorni nel futuro (0 = solo oggi)">
+        <input
+          type="number"
+          min={0}
+          max={60}
+          value={draft.lookAheadDays}
+          onChange={(e) =>
+            patch({ lookAheadDays: Math.max(0, Number(e.target.value) || 0) })
+          }
+          className="w-28 rounded-lg bg-slate-800 px-3 py-2 text-sm"
+        />
+      </Field>
+    </div>
+  );
+}
+
+function ColumnSelect({
+  headers,
+  value,
+  onChange,
+}: {
+  headers: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="rounded-lg bg-slate-800 px-3 py-2 text-sm"
+    >
+      <option value="">— scegli —</option>
+      {headers.map((h) => (
+        <option key={h} value={h}>
+          {h}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function NamedaysFields({
+  draft,
+  patch,
+  onError,
+}: {
+  draft: NamedaysWidgetConfig;
+  patch: (p: Partial<NamedaysWidgetConfig>) => void;
+  onError: (msg: string | null) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <Field label="Sorgente della data">
+        <div className="flex gap-4 text-sm">
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={draft.source === "builtin"}
+              onChange={() => patch({ source: "builtin" })}
+            />
+            Dizionario interno (~230 nomi italiani)
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={draft.source === "sheet"}
+              onChange={() => patch({ source: "sheet" })}
+            />
+            Colonna data nel foglio
+          </label>
+        </div>
+      </Field>
+      <SheetSourceFields
+        draft={draft}
+        patch={patch}
+        withDateColumn={draft.source === "sheet"}
+        withNameColumn={draft.source === "builtin"}
+        onError={onError}
+      />
+    </div>
+  );
+}
+
+/* ---------- Calendar ---------- */
+
+function CalendarFields({
+  draft,
+  patch,
+  onError,
+}: {
+  draft: CalendarWidgetConfig;
+  patch: (p: Partial<CalendarWidgetConfig>) => void;
+  onError: (msg: string | null) => void;
+}) {
+  const [calendars, setCalendars] = useState<CalendarListEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    onError(null);
+    setLoading(true);
+    try {
+      const token = requireToken();
+      const list = await listCalendars(token);
+      if (list.length === 0) throw new Error("Nessun calendario trovato.");
+      setCalendars(list);
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "Caricamento fallito.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 rounded-xl bg-slate-800/50 p-4">
+      <Field label="Calendario">
+        <div className="flex items-center gap-2">
+          {calendars.length > 0 ? (
+            <select
+              value={draft.calendarId}
+              onChange={(e) => {
+                const cal = calendars.find((c) => c.id === e.target.value);
+                patch({
+                  calendarId: e.target.value,
+                  calendarLabel: cal?.summary ?? "",
+                });
+              }}
+              className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm"
+            >
+              <option value="">— scegli —</option>
+              {calendars.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.summary}
+                  {c.primary ? " (principale)" : ""}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-sm text-slate-400">
+              {draft.calendarLabel
+                ? `Selezionato: ${draft.calendarLabel}`
+                : "Nessun calendario caricato."}
+            </span>
+          )}
+          <button
+            onClick={() => void load()}
+            disabled={loading}
+            className="shrink-0 rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium hover:bg-slate-600 disabled:opacity-50"
+          >
+            {loading ? "Carico…" : "Carica calendari"}
+          </button>
+        </div>
+      </Field>
+      <Field label="Mostra eventi fino a N giorni nel futuro (0 = solo oggi)">
+        <input
+          type="number"
+          min={0}
+          max={60}
+          value={draft.lookAheadDays}
+          onChange={(e) =>
+            patch({ lookAheadDays: Math.max(0, Number(e.target.value) || 0) })
+          }
+          className="w-28 rounded-lg bg-slate-800 px-3 py-2 text-sm"
+        />
+      </Field>
+    </div>
+  );
+}
+
+/* ---------- Drive ---------- */
+
+function DriveFields({
+  draft,
+  patch,
+}: {
+  draft: DriveWidgetConfig;
+  patch: (p: Partial<DriveWidgetConfig>) => void;
+}) {
+  const [input, setInput] = useState(draft.folderId);
+
+  return (
+    <div className="space-y-4 rounded-xl bg-slate-800/50 p-4">
+      <Field label="URL o ID della cartella Google Drive">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            const id = extractFolderId(e.target.value);
+            if (id) patch({ folderId: id });
+          }}
+          placeholder="https://drive.google.com/drive/folders/…"
+          spellCheck={false}
+          className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs"
+        />
+      </Field>
+      <p className="text-xs text-slate-500">
+        File <code>5_nome.jpg</code> → forzati alla pagina 5; senza prefisso
+        numerico → riempiono le pagine vuote. Immagini e video sono salvati
+        offline; Presentazioni/Documenti Google usano un iframe (solo online).
+      </p>
+    </div>
+  );
+}
+
+/* ---------- Template ---------- */
+
+function TemplateField({
+  template,
+  placeholders,
+  onChange,
+}: {
+  template: string;
+  placeholders: string[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <Field label="Template HTML (usa {placeholder} per i dati)">
+      <textarea
+        value={template}
+        onChange={(e) => onChange(e.target.value)}
+        rows={4}
+        spellCheck={false}
+        className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs"
+      />
+      {placeholders.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {placeholders.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onChange(template + `{${p}}`)}
+              title="Aggiungi al template"
+              className="rounded-full bg-slate-700 px-3 py-1 text-xs hover:bg-slate-600"
+            >
+              {"{" + p + "}"}
+            </button>
+          ))}
+        </div>
+      )}
+    </Field>
+  );
+}
