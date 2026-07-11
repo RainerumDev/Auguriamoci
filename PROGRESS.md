@@ -11,14 +11,18 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
   - Onboarding (nuova config / import file), Player shell (menu segreto ⚙️,
     indicatore offline, fullscreen su click), SettingsOverlay (intervallo sync,
     durata pagina, export/import/reset)
-- [ ] **Step 2 — Google OAuth (GIS)** ← PROSSIMO
-  - Caricare script GIS, token client (implicit flow), scopes: sheets.readonly,
-    drive.readonly, calendar.readonly
-  - Salvataggio access token + expiry in localStorage (MAI nell'export config)
-  - Silent refresh con prompt='' se sessione Google attiva; avviso a scadenza
-  - Client ID configurabile dall'utente nelle impostazioni (niente backend)
-  - UI login/logout in SettingsOverlay
-- [ ] **Step 3 — Connettori API**
+- [x] **Step 2 — Google OAuth (GIS)** (iterazione 2)
+  - `src/lib/google/auth.ts`: loader script GIS, token client implicit flow,
+    scopes sheets/drive/calendar readonly + openid email
+  - Token in localStorage chiave `auguriamoci:oauth-token` (mai nell'export)
+  - Silent refresh (`prompt: ''`) all'avvio se token scaduto; icona 🔑 nel
+    Player quando sessione scaduta
+  - `googleClientId` in AppConfig (esportabile, è un identificatore pubblico)
+  - `useAuth` hook + sezione Account in SettingsOverlay (input Client ID con
+    persistenza su blur, login/logout, stato connesso con email)
+  - NON testato con OAuth reale (serve Client ID vero): popup, revoke,
+    userinfo fetch da verificare alla prima prova con account reale
+- [ ] **Step 3 — Connettori API** ← PROSSIMO
   - `src/lib/google/sheets.ts` — fetch valori + prima riga per mappatura
   - `src/lib/google/calendar.ts` — lista calendari + eventi N giorni
   - `src/lib/google/drive.ts` — listing cartella + download blob → tabella media
@@ -48,3 +52,6 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
 ## Diario iterazioni
 
 - **Iter 1 (2026-07-11):** scaffold completo, build verde, git init + primo commit.
+- **Iter 2 (2026-07-11):** OAuth GIS completo (auth.ts, useAuth, UI account).
+  Verificato in browser: persistenza Client ID, stati bottone login, nessun
+  errore console. OAuth reale da provare con Client ID vero.

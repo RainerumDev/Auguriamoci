@@ -83,6 +83,11 @@ export type WidgetConfig =
 
 export interface AppConfig {
   version: number;
+  /**
+   * Google OAuth Client ID (public identifier, safe to export).
+   * Created by the user in Google Cloud Console for a "Web application".
+   */
+  googleClientId: string;
   /** Background data refresh interval, in minutes. */
   updateIntervalMinutes: number;
   /** Default page duration, in seconds. */
@@ -92,6 +97,7 @@ export interface AppConfig {
 
 export const DEFAULT_CONFIG: AppConfig = {
   version: CONFIG_VERSION,
+  googleClientId: "",
   updateIntervalMinutes: 30,
   defaultPageDurationSeconds: 15,
   widgets: [],
@@ -131,6 +137,8 @@ export function parseConfigJson(raw: string): AppConfig {
   }
   return {
     version: CONFIG_VERSION,
+    googleClientId:
+      typeof cfg.googleClientId === "string" ? cfg.googleClientId : "",
     updateIntervalMinutes:
       typeof cfg.updateIntervalMinutes === "number" &&
       cfg.updateIntervalMinutes >= 1

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppConfig } from "../lib/config";
 import { useOnline } from "../hooks/useOnline";
+import { useAuth } from "../hooks/useAuth";
 import SettingsOverlay from "../components/SettingsOverlay";
 
 interface Props {
@@ -13,6 +14,7 @@ const IDLE_TIMEOUT = 3500;
 
 export default function Player({ config, onConfigChange }: Props) {
   const online = useOnline();
+  const auth = useAuth(config.googleClientId);
   const [gearVisible, setGearVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const idleTimer = useRef<number | undefined>(undefined);
@@ -63,6 +65,18 @@ export default function Player({ config, onConfigChange }: Props) {
         )}
       </div>
 
+      {/* Expired Google session: data keeps playing from cache, but the next
+          sync needs a new sign-in. */}
+      {auth.status === "expired" && (
+        <div
+          title="Sessione Google scaduta: accedi di nuovo dalle impostazioni"
+          className="absolute top-4 left-4 text-3xl opacity-40 select-none"
+          aria-label="sessione scaduta"
+        >
+          🔑
+        </div>
+      )}
+
       {/* Offline indicator (PRD §4.2): playback never stops. */}
       {!online && (
         <div
@@ -91,6 +105,7 @@ export default function Player({ config, onConfigChange }: Props) {
       {settingsOpen && (
         <SettingsOverlay
           config={config}
+          auth={auth}
           onConfigChange={onConfigChange}
           onClose={() => setSettingsOpen(false)}
         />
