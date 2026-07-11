@@ -34,11 +34,27 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
     "Sincronizza ora" + report errori in SettingsOverlay
   - Vitest: 13 test (parsing ID, rowsToObjects, size cap, round-trip config)
   - NON testato contro API reali (serve login vero)
-- [ ] **Step 4 — Templating + pannello widget** ← PROSSIMO
-  - Interpolazione `{campo}`, editor widget (sheet URL→ID, mappatura colonne
-    con auto-suggest data `/birth|date|nascita|data/i`), filtro compleanni
-    (ignora anno, prossimi X giorni), onomastici (sheet o `nomi_onomastici.json`
-    builtin con match case/accents-insensitive)
+- [x] **Step 4a — Logica templating/filtri** (iterazione 4)
+  - `template.ts` — interpolate (valori HTML-escaped, template fidato),
+    extractPlaceholders; chiavi con accenti/spazi ok
+  - `dates.ts` — parseDayMonth (dd/mm[/yyyy], ISO), daysUntilNext con wrap
+    anno, occursInWindow, suggestDateColumn (regex PRD), formatDayMonth it-IT
+  - `data/nomi_onomastici.json` — ~230 nomi normalizzati → [giorno, mese]
+  - `namedays.ts` — normalizeName (NFD, no accenti), findNameday con
+    fallback primo token per nomi composti
+  - `widgetData.ts` — buildBirthdayItems / buildNamedayItems /
+    buildCalendarItems → RenderItem[] ordinati; placeholder extra
+    {data_festa}; calendario: {titolo} {data_inizio} {ora_inizio}
+    {descrizione} {luogo}, scarta eventi finiti
+  - 37 test vitest verdi
+- [ ] **Step 4b — Editor widget (UI)** ← PROSSIMO
+  - Pannello "Widget e pagine": aggiungi/modifica/elimina/riordina widget
+  - Editor compleanni: URL sheet → fetch header → pick colonna data
+    (auto-suggest) → textarea template con anteprima placeholder
+  - Editor onomastici: scelta sorgente, pick colonna nome
+  - Editor calendario: dropdown listCalendars → template
+  - Editor drive: URL/ID cartella
+  - Campi comuni: titolo, pagina fissa (opzionale), durata override, enabled
 - [ ] **Step 5 — Timeline Manager**
   - Pagine fisse per widget, prefissi numerici file Drive (`5_foo.jpg`),
     fill dei buchi con file senza prefisso, shuffle collisioni per ciclo,
@@ -64,3 +80,5 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
   errore console. OAuth reale da provare con Client ID vero.
 - **Iter 3 (2026-07-11):** connettori Sheets/Calendar/Drive + sync engine +
   useSync + vitest (13 test verdi). Build verde, zero errori console.
+- **Iter 4 (2026-07-11):** logica Step 4 completa (template, date, onomastici,
+  widgetData) — 37 test verdi, build verde. UI editor rimandata a iter 5.
