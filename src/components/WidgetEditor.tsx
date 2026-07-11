@@ -1,16 +1,18 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type {
   CalendarWidgetConfig,
   DriveWidgetConfig,
   NamedaysWidgetConfig,
+  WidgetBackground,
   WidgetConfig,
 } from "../lib/config";
 import { WIDGET_TYPE_LABELS } from "../lib/config";
 import { getStoredToken, isTokenValid } from "../lib/google/auth";
 import { extractSheetId, fetchSheet } from "../lib/google/sheets";
-import { extractFolderId } from "../lib/google/drive";
+import { extractDriveFileId, extractFolderId } from "../lib/google/drive";
 import { listCalendars, type CalendarListEntry } from "../lib/google/calendar";
 import { suggestDateColumn } from "../lib/dates";
+import RichTemplateEditor from "./RichTemplateEditor";
 
 interface Props {
   initial: WidgetConfig;
@@ -126,11 +128,17 @@ export default function WidgetEditor({ initial, onSave, onCancel }: Props) {
         {draft.type === "drive" && <DriveFields draft={draft} patch={patch} />}
 
         {draft.type !== "drive" && (
-          <TemplateField
-            template={draft.template}
-            placeholders={placeholdersFor(draft)}
-            onChange={(template) => patch({ template })}
-          />
+          <>
+            <RichTemplateEditor
+              value={draft.template}
+              placeholders={placeholdersFor(draft)}
+              onChange={(template) => patch({ template })}
+            />
+            <BackgroundField
+              background={draft.background}
+              onChange={(background) => patch({ background })}
+            />
+          </>
         )}
 
         {error && <p className="text-sm text-red-400">{error}</p>}
@@ -519,41 +527,113 @@ function DriveFields({
   );
 }
 
-/* ---------- Template ---------- */
+/* ---------- Background (Drive file or embedded base64) ---------- */
 
-function TemplateField({
-  template,
-  placeholders,
+/** Embedded backgrounds live inside the exported JSON: keep them small. */
+const MAX_EMBEDDED_BG_BYTES = 2 * 1024 * 1024;
+
+function BackgroundField({
+  background,
   onChange,
 }: {
-  template: string;
-  placeholders: string[];
-  onChange: (v: string) => void;
+  background?: WidgetBackground;
+  onChange: (bg: WidgetBackground | undefined) => void;
 }) {
+  const [driveInput, setDriveInput] = useState(
+    background?.source === "drive" ? (background.fileId ?? "") : "",
+  );
+  const [error, setError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const mode = background?.source ?? "none";
+
+  const uploadFile = (file: File) => {
+    setError(null);
+    if (file.size > MAX_EMBEDDED_BG_BYTES) {
+      setError(
+        "Immagine troppo grande (max 2 MB): finirebbe nel file di configurazione. Usa un file Drive.",
+      );
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () =>
+      onChange({ source: "embedded", dataUrl: String(reader.result) });
+    reader.readAsDataURL(file);
+  };
+
   return (
-    <Field label="Template HTML (usa {placeholder} per i dati)">
-      <textarea
-        value={template}
-        onChange={(e) => onChange(e.target.value)}
-        rows={4}
-        spellCheck={false}
-        className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs"
-      />
-      {placeholders.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2">
-          {placeholders.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => onChange(template + `{${p}}`)}
-              title="Aggiungi al template"
-              className="rounded-full bg-slate-700 px-3 py-1 text-xs hover:bg-slate-600"
-            >
-              {"{" + p + "}"}
-            </button>
-          ))}
+    <div className="space-y-3 rounded-xl bg-slate-800/50 p-4 text-sm">
+      <span className="block text-slate-300">Sfondo pagina</span>
+      <div className="flex flex-wrap gap-4">
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            checked={mode === "none"}
+            onChange={() => onChange(undefined)}
+          />
+          Nessuno
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            checked={mode === "drive"}
+            onChange={() => onChange({ source: "drive", fileId: "" })}
+          />
+          File Google Drive
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            checked={mode === "embedded"}
+            onChange={() => fileInput.current?.click()}
+          />
+          Immagine caricata (salvata nella configurazione)
+        </label>
+      </div>
+
+      {mode === "drive" && (
+        <input
+          type="text"
+          value={driveInput}
+          onChange={(e) => {
+            setDriveInput(e.target.value);
+            const id = extractDriveFileId(e.target.value);
+            onChange({ source: "drive", fileId: id ?? "" });
+          }}
+          placeholder="https://drive.google.com/file/d/…"
+          spellCheck={false}
+          className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs"
+        />
+      )}
+
+      {mode === "embedded" && background?.dataUrl && (
+        <div className="flex items-center gap-3">
+          <img
+            src={background.dataUrl}
+            alt="anteprima sfondo"
+            className="h-16 w-28 rounded object-cover"
+          />
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            className="rounded-lg bg-slate-700 px-3 py-1 text-xs hover:bg-slate-600"
+          >
+            Cambia
+          </button>
         </div>
       )}
-    </Field>
+
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) uploadFile(f);
+          e.target.value = "";
+        }}
+      />
+      {error && <p className="text-xs text-red-400">{error}</p>}
+    </div>
   );
 }

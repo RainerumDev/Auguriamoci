@@ -34,6 +34,19 @@ export function extractFolderId(input: string): string | null {
   return /^[a-zA-Z0-9_-]{10,}$/.test(trimmed) ? trimmed : null;
 }
 
+/**
+ * Accepts a Drive FILE url or bare ID.
+ * https://drive.google.com/file/d/<ID>/view -> <ID>
+ */
+export function extractDriveFileId(input: string): string | null {
+  const trimmed = input.trim();
+  const fromUrl = /\/(?:file\/)?d\/([a-zA-Z0-9_-]+)/.exec(trimmed);
+  if (fromUrl) return fromUrl[1];
+  const fromQuery = /[?&]id=([a-zA-Z0-9_-]+)/.exec(trimmed);
+  if (fromQuery) return fromQuery[1];
+  return /^[a-zA-Z0-9_-]{10,}$/.test(trimmed) ? trimmed : null;
+}
+
 /** Non-trashed files inside a folder (single page, up to 1000 entries). */
 export async function listFolderFiles(
   folderId: string,

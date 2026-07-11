@@ -23,6 +23,8 @@ export interface PresentationData {
   renderData: Map<string, RenderItem[]>;
   /** Drive fileId -> object URL for the cached blob. */
   mediaUrls: Map<string, string>;
+  /** widgetId -> background image URL (object URL or data URL). */
+  backgroundUrls: Map<string, string>;
 }
 
 const EMPTY: PresentationData = {
@@ -30,6 +32,7 @@ const EMPTY: PresentationData = {
   timeline: [],
   renderData: new Map(),
   mediaUrls: new Map(),
+  backgroundUrls: new Map(),
 };
 
 /**
@@ -128,12 +131,29 @@ export function usePresentation(
         }
       }
 
+      // Page backgrounds: embedded data URLs or cached Drive blobs.
+      const backgroundUrls = new Map<string, string>();
+      for (const widget of config.widgets.filter((w) => w.enabled)) {
+        const bg = widget.background;
+        if (!bg) continue;
+        if (bg.source === "embedded" && bg.dataUrl) {
+          backgroundUrls.set(widget.id, bg.dataUrl);
+        } else if (bg.source === "drive" && bg.fileId) {
+          const row = await db.media.get(bg.fileId);
+          if (row) {
+            const url = URL.createObjectURL(row.blob);
+            urls.push(url);
+            backgroundUrls.set(widget.id, url);
+          }
+        }
+      }
+
       const timeline = buildTimeline(config.widgets, driveFiles);
 
       if (cancelled) {
         urls.forEach((u) => URL.revokeObjectURL(u));
       } else {
-        setData({ ready: true, timeline, renderData, mediaUrls });
+        setData({ ready: true, timeline, renderData, mediaUrls, backgroundUrls });
       }
     })();
 

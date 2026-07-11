@@ -13,6 +13,15 @@ export const CONFIG_VERSION = 1;
 
 export type WidgetType = "birthdays" | "namedays" | "calendar" | "drive";
 
+/** Optional page background for template widgets. */
+export interface WidgetBackground {
+  source: "drive" | "embedded";
+  /** Google Drive file ID (source = "drive"); blob cached in IndexedDB. */
+  fileId?: string;
+  /** data: URL (source = "embedded"); travels inside config exports. */
+  dataUrl?: string;
+}
+
 export interface BaseWidgetConfig {
   id: string;
   type: WidgetType;
@@ -23,6 +32,8 @@ export interface BaseWidgetConfig {
   page?: number;
   /** Per-page duration override (seconds). Falls back to the global default. */
   durationSeconds?: number;
+  /** Page background image (ignored by the drive widget). */
+  background?: WidgetBackground;
 }
 
 /** Column mapping: template field name -> sheet header (as written in row 1). */

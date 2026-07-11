@@ -84,6 +84,7 @@ async function syncWidget(
   widget: WidgetConfig,
   accessToken: string,
 ): Promise<void> {
+  await syncBackground(widget, accessToken);
   switch (widget.type) {
     case "birthdays": {
       const payload = await fetchSheet(
@@ -167,10 +168,34 @@ async function syncWidget(
   }
 }
 
-/** Drop cached blobs that no longer belong to any configured Drive widget. */
+/** Cache the page-background Drive file, once (no modifiedTime tracking). */
+async function syncBackground(
+  widget: WidgetConfig,
+  accessToken: string,
+): Promise<void> {
+  const bg = widget.background;
+  if (bg?.source !== "drive" || !bg.fileId) return;
+  if (await db.media.get(bg.fileId)) return;
+  const blob = await downloadFileBlob(bg.fileId, accessToken);
+  await db.media.put({
+    fileId: bg.fileId,
+    name: "background",
+    mimeType: blob.type || "image/jpeg",
+    updatedAt: Date.now(),
+    blob,
+  });
+}
+
+/**
+ * Drop cached blobs that no longer belong to any configured Drive widget
+ * or widget background.
+ */
 async function pruneMedia(config: AppConfig): Promise<void> {
   const wanted = new Set<string>();
   for (const widget of config.widgets) {
+    if (widget.background?.source === "drive" && widget.background.fileId) {
+      wanted.add(widget.background.fileId);
+    }
     if (widget.type !== "drive") continue;
     const row = await db.datasets.get(widget.id);
     if (row?.kind === "drive") {
