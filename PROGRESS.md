@@ -56,13 +56,26 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
   - SettingsOverlay: lista widget con toggle/modifica/elimina + 4 bottoni "+"
   - Verificato in browser: add Drive → salva → persiste → elimina; editor
     compleanni renderizza; estrazione folder ID da URL ok
-- [ ] **Step 5 — Timeline Manager** ← PROSSIMO
-  - Pagine fisse per widget, prefissi numerici file Drive (`5_foo.jpg`),
-    fill dei buchi con file senza prefisso, shuffle collisioni per ciclo,
-    durata per pagina
-- [ ] **Step 6 — Player finale + polish**
-  - Rendering widget nello stage, media (img/video loop muted), iframe Slides
-    con skip offline, transizioni, icone PWA vere, deploy GitHub Pages (workflow)
+- [x] **Step 5 — Timeline Manager + Player runtime** (iterazione 6)
+  - `timeline.ts`: parsePagePrefix (`^\d+[_\- ]`), buildTimeline (pin widget
+    con pagina fissa + file prefissati, fill & pin dei buchi, widget senza
+    pagina = filler), resolveCycle (shuffle collisioni per ciclo, durata
+    override widget ?? default, scarta pagine senza contenuto disponibile)
+  - `usePresentation`: monta tutto SOLO da IndexedDB (datasets + media blob →
+    object URL), ricalcolo dopo ogni sync e ogni ora (rollover data)
+  - `Stage.tsx`: widget HTML (dangerouslySetInnerHTML, valori escapati),
+    img/video object-contain (video loop muted), iframe /preview per
+    Slides/Docs (solo online), fade-in tra pagine
+  - Player: ciclo autoplay con setTimeout per durata pagina, reshuffle a
+    fine ciclo; iframe saltati offline via isAvailable
+  - 49 test verdi; verificato in browser end-to-end con dataset iniettato
+    (pagina compleanno renderizzata, filtro data ok)
+- [ ] **Step 6 — Polish + deploy** ← PROSSIMO
+  - Icone PWA vere (192/512 png), workflow GitHub Pages deploy
+  - README con setup Google Cloud Console (client ID, origini autorizzate)
+  - Rifiniture player: layout multi-item nelle pagine widget (griglia se
+    tanti elementi), titolo widget opzionale in pagina
+  - Test manuale con dati reali dell'utente (ha già client ID + login attivi)
 
 ## Note tecniche per le prossime iterazioni
 
@@ -83,6 +96,9 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
   useSync + vitest (13 test verdi). Build verde, zero errori console.
 - **Iter 4 (2026-07-11):** logica Step 4 completa (template, date, onomastici,
   widgetData) — 37 test verdi, build verde. UI editor rimandata a iter 5.
+- **Iter 6 (2026-07-11):** Timeline Manager + player runtime completi. Stage
+  verificato end-to-end in browser. Cleanup dati test fatto, clientId utente
+  preservato.
 - **Iter 5 (2026-07-11):** editor widget completo + gestione lista. IMPORTANTE:
   l'UTENTE ha configurato un Client ID reale e ha fatto login vero
   (licenza1@juvenes.it) — OAuth end-to-end confermato funzionante. Client ID

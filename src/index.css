@@ -15,3 +15,13 @@ body,
 .cursor-hidden * {
   cursor: none !important;
 }
+
+/* Page transition used by the player stage. */
+@keyframes fadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
