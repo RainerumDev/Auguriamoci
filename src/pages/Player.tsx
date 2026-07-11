@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppConfig } from "../lib/config";
 import { useOnline } from "../hooks/useOnline";
 import { useAuth } from "../hooks/useAuth";
+import { useSync } from "../hooks/useSync";
 import SettingsOverlay from "../components/SettingsOverlay";
 
 interface Props {
@@ -15,6 +16,7 @@ const IDLE_TIMEOUT = 3500;
 export default function Player({ config, onConfigChange }: Props) {
   const online = useOnline();
   const auth = useAuth(config.googleClientId);
+  const sync = useSync(config);
   const [gearVisible, setGearVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const idleTimer = useRef<number | undefined>(undefined);
@@ -106,6 +108,7 @@ export default function Player({ config, onConfigChange }: Props) {
         <SettingsOverlay
           config={config}
           auth={auth}
+          sync={sync}
           onConfigChange={onConfigChange}
           onClose={() => setSettingsOpen(false)}
         />

@@ -22,12 +22,19 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
     persistenza su blur, login/logout, stato connesso con email)
   - NON testato con OAuth reale (serve Client ID vero): popup, revoke,
     userinfo fetch da verificare alla prima prova con account reale
-- [ ] **Step 3 — Connettori API** ← PROSSIMO
-  - `src/lib/google/sheets.ts` — fetch valori + prima riga per mappatura
-  - `src/lib/google/calendar.ts` — lista calendari + eventi N giorni
-  - `src/lib/google/drive.ts` — listing cartella + download blob → tabella media
-  - Sync loop (setInterval, solo online) → scrive in `datasets`
-- [ ] **Step 4 — Templating + pannello widget**
+- [x] **Step 3 — Connettori API** (iterazione 3)
+  - `google/api.ts` — googleGet/googleGetBlob + GoogleApiError (isAuthError)
+  - `google/sheets.ts` — fetchSheet (header+rows), extractSheetId, rowsToObjects
+  - `google/calendar.ts` — listCalendars, fetchEvents (oggi→+N gg, singleEvents)
+  - `google/drive.ts` — listFolderFiles, downloadFileBlob, extractFolderId,
+    cap 150MB/file, isEmbeddable (Slides/Docs via iframe)
+  - `sync.ts` — syncAll: per-widget try/catch → SyncReport in kv, blob media
+    incrementali (confronto modifiedTime), pruneMedia
+  - `useSync` — run all'avvio + intervallo config + evento online; bottone
+    "Sincronizza ora" + report errori in SettingsOverlay
+  - Vitest: 13 test (parsing ID, rowsToObjects, size cap, round-trip config)
+  - NON testato contro API reali (serve login vero)
+- [ ] **Step 4 — Templating + pannello widget** ← PROSSIMO
   - Interpolazione `{campo}`, editor widget (sheet URL→ID, mappatura colonne
     con auto-suggest data `/birth|date|nascita|data/i`), filtro compleanni
     (ignora anno, prossimi X giorni), onomastici (sheet o `nomi_onomastici.json`
@@ -55,3 +62,5 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
 - **Iter 2 (2026-07-11):** OAuth GIS completo (auth.ts, useAuth, UI account).
   Verificato in browser: persistenza Client ID, stati bottone login, nessun
   errore console. OAuth reale da provare con Client ID vero.
+- **Iter 3 (2026-07-11):** connettori Sheets/Calendar/Drive + sync engine +
+  useSync + vitest (13 test verdi). Build verde, zero errori console.

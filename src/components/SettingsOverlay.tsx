@@ -6,10 +6,12 @@ import {
 } from "../lib/config";
 import { clearAllData } from "../lib/db";
 import type { AuthState } from "../hooks/useAuth";
+import type { SyncState } from "../hooks/useSync";
 
 interface Props {
   config: AppConfig;
   auth: AuthState;
+  sync: SyncState;
   onConfigChange: (config: AppConfig) => void;
   onClose: () => void;
 }
@@ -17,6 +19,7 @@ interface Props {
 export default function SettingsOverlay({
   config,
   auth,
+  sync,
   onConfigChange,
   onClose,
 }: Props) {
@@ -171,6 +174,37 @@ export default function SettingsOverlay({
               ))}
             </select>
           </label>
+          <div className="mt-3 flex items-center gap-3 text-sm">
+            <button
+              onClick={() => void sync.syncNow()}
+              disabled={sync.syncing || auth.status !== "signed-in"}
+              className="rounded-lg bg-slate-700 px-4 py-2 font-medium hover:bg-slate-600 disabled:opacity-50"
+            >
+              {sync.syncing ? "Sincronizzazione…" : "Sincronizza ora"}
+            </button>
+            {sync.lastReport && (
+              <span className="text-xs text-slate-400">
+                Ultima:{" "}
+                {new Date(sync.lastReport.finishedAt).toLocaleTimeString(
+                  "it-IT",
+                )}
+                {sync.lastReport.blocked
+                  ? ` — ${sync.lastReport.blocked}`
+                  : ` — ${sync.lastReport.results.filter((r) => r.ok).length}/${sync.lastReport.results.length} widget ok`}
+              </span>
+            )}
+          </div>
+          {sync.lastReport?.results.some((r) => !r.ok) && (
+            <ul className="mt-2 space-y-1 text-xs text-red-400">
+              {sync.lastReport.results
+                .filter((r) => !r.ok)
+                .map((r) => (
+                  <li key={r.widgetId}>
+                    {r.title}: {r.error}
+                  </li>
+                ))}
+            </ul>
+          )}
           <label className="mt-3 flex items-center gap-3 text-sm">
             Durata pagina predefinita
             <input
