@@ -29,7 +29,11 @@ export default function Player({ config, onConfigChange }: Props) {
     sync.lastReport?.finishedAt ?? null,
   );
   const [gearVisible, setGearVisible] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // First run (no widgets yet): open the settings straight away instead of
+  // showing an empty stage and hoping the user finds the secret gear.
+  const [settingsOpen, setSettingsOpen] = useState(
+    () => !config.widgets.some((w) => w.enabled),
+  );
   const idleTimer = useRef<number | undefined>(undefined);
 
   // A page candidate is playable only with local content behind it
