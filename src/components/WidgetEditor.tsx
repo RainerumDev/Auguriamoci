@@ -1,20 +1,28 @@
 import { useRef, useState } from "react";
 import type {
+  AppConfig,
   CalendarWidgetConfig,
+  DriveFileOptions,
   DriveWidgetConfig,
   NamedaysWidgetConfig,
   WidgetBackground,
   WidgetConfig,
 } from "../lib/config";
 import { WIDGET_TYPE_LABELS } from "../lib/config";
-import { getStoredToken, isTokenValid } from "../lib/google/auth";
+import { getStoredToken, isTokenValid, loadPicker } from "../lib/google/auth";
 import { extractSheetId, fetchSheet } from "../lib/google/sheets";
-import { extractDriveFileId, extractFolderId } from "../lib/google/drive";
+import {
+  extractDriveFileId,
+  extractFolderId,
+  listFolderFiles,
+  type DriveFileMeta,
+} from "../lib/google/drive";
 import { listCalendars, type CalendarListEntry } from "../lib/google/calendar";
 import { suggestDateColumn } from "../lib/dates";
 import RichTemplateEditor from "./RichTemplateEditor";
 
 interface Props {
+  config: AppConfig;
   initial: WidgetConfig;
   onSave: (widget: WidgetConfig) => void;
   onCancel: () => void;
@@ -29,7 +37,7 @@ function requireToken(): string {
   return token.accessToken;
 }
 
-export default function WidgetEditor({ initial, onSave, onCancel }: Props) {
+export default function WidgetEditor({ config, initial, onSave, onCancel }: Props) {
   const [draft, setDraft] = useState<WidgetConfig>(() =>
     structuredClone(initial),
   );
@@ -111,6 +119,20 @@ export default function WidgetEditor({ initial, onSave, onCancel }: Props) {
           </label>
         </div>
 
+        <Field label="Margine (es: 20px, 2rem, vuoto = nessuno)">
+          <input
+            type="text"
+            value={draft.margin ?? ""}
+            onChange={(e) =>
+              patch({
+                margin: e.target.value || undefined,
+              })
+            }
+            placeholder="es. 20px, 2rem"
+            className="w-48 rounded-lg bg-slate-800 px-3 py-2 text-sm"
+          />
+        </Field>
+
         {draft.type === "birthdays" && (
           <SheetSourceFields
             draft={draft}
@@ -125,7 +147,13 @@ export default function WidgetEditor({ initial, onSave, onCancel }: Props) {
         {draft.type === "calendar" && (
           <CalendarFields draft={draft} patch={patch} onError={setError} />
         )}
-        {draft.type === "drive" && <DriveFields draft={draft} patch={patch} />}
+        {draft.type === "drive" && (
+          <DriveFields
+            draft={draft}
+            patch={patch}
+            apiKey={config.googleApiKey}
+          />
+        )}
 
         {draft.type !== "drive" && (
           <>
@@ -188,7 +216,7 @@ function validate(w: WidgetConfig): void {
 
 function placeholdersFor(w: WidgetConfig): string[] {
   if (w.type === "calendar") {
-    return ["titolo", "data_inizio", "ora_inizio", "descrizione", "luogo"];
+    return ["titolo", "data_inizio", "ora_inizio", "data_fine", "ora_fine", "periodo", "descrizione", "luogo"];
   }
   if (w.type === "birthdays" || w.type === "namedays") {
     return [...Object.keys(w.columns), "data_festa"];
@@ -493,31 +521,260 @@ function CalendarFields({
 
 /* ---------- Drive ---------- */
 
+function fileTypeIcon(mimeType: string): string {
+  if (mimeType.startsWith("image/")) return "📷";
+  if (mimeType.startsWith("video/")) return "🎬";
+  return "📄";
+}
+
 function DriveFields({
   draft,
   patch,
+  apiKey,
 }: {
   draft: DriveWidgetConfig;
   patch: (p: Partial<DriveWidgetConfig>) => void;
+  apiKey: string;
 }) {
   const [input, setInput] = useState(draft.folderId);
+  const [files, setFiles] = useState<DriveFileMeta[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [loadingPicker, setLoadingPicker] = useState(false);
+  const [driveError, setDriveError] = useState<string | null>(null);
+
+  const fileOptions = draft.fileOptions ?? {};
+
+  const patchFileOption = (
+    fileId: string,
+    update: Partial<DriveFileOptions>,
+  ) => {
+    const current = fileOptions[fileId] ?? {};
+    patch({
+      fileOptions: {
+        ...fileOptions,
+        [fileId]: { ...current, ...update },
+      },
+    });
+  };
+
+  const openPicker = async () => {
+    setDriveError(null);
+    setLoadingPicker(true);
+    try {
+      const token = requireToken();
+      await loadPicker();
+      const google = window.google!;
+
+      const folderView = new google.picker.DocsView()
+        .setIncludeFolders(true)
+        .setSelectFolderEnabled(true)
+        .setMimeTypes("application/vnd.google-apps.folder");
+
+      const filesView = new google.picker.DocsView()
+        .setIncludeFolders(false);
+
+      const picker = new google.picker.PickerBuilder()
+        .addView(folderView)
+        .addView(filesView)
+        .setOAuthToken(token)
+        .setDeveloperKey(apiKey)
+        .setTitle("Seleziona cartella o file")
+        .setCallback(
+          (data: {
+            action: string;
+            docs?: { id: string; name: string; mimeType: string; parentId?: string }[];
+          }) => {
+            if (data.action !== "picked" || !data.docs?.length) return;
+            const doc = data.docs[0];
+            if (
+              doc.mimeType === "application/vnd.google-apps.folder"
+            ) {
+              setInput(doc.id);
+              patch({ folderId: doc.id, folderLabel: doc.name });
+            } else {
+              // File selected: use parentId if available, otherwise use the file's own id as reference
+              const parentId = doc.parentId;
+              if (parentId) {
+                setInput(parentId);
+                patch({ folderId: parentId });
+              }
+            }
+          },
+        )
+        .build();
+      picker.setVisible(true);
+    } catch (e) {
+      setDriveError(
+        e instanceof Error ? e.message : "Impossibile aprire il Picker.",
+      );
+    } finally {
+      setLoadingPicker(false);
+    }
+  };
+
+  const loadFileList = async () => {
+    setDriveError(null);
+    const folderId = extractFolderId(input) ?? draft.folderId;
+    if (!folderId) {
+      setDriveError("Inserisci prima un URL o ID di cartella.");
+      return;
+    }
+    setLoadingFiles(true);
+    try {
+      const token = requireToken();
+      const payload = await listFolderFiles(folderId, token);
+      setFiles(payload.files);
+      if (payload.files.length === 0) {
+        setDriveError("La cartella è vuota.");
+      }
+    } catch (e) {
+      setDriveError(
+        e instanceof Error ? e.message : "Caricamento elenco fallito.",
+      );
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
 
   return (
     <div className="space-y-4 rounded-xl bg-slate-800/50 p-4">
       <Field label="URL o ID della cartella Google Drive">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            const id = extractFolderId(e.target.value);
-            if (id) patch({ folderId: id });
-          }}
-          placeholder="https://drive.google.com/drive/folders/…"
-          spellCheck={false}
-          className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs"
-        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              const id = extractFolderId(e.target.value);
+              if (id) patch({ folderId: id });
+            }}
+            placeholder="https://drive.google.com/drive/folders/…"
+            spellCheck={false}
+            className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs"
+          />
+          <button
+            type="button"
+            onClick={() => void openPicker()}
+            disabled={loadingPicker}
+            className="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-slate-900 hover:bg-amber-500 disabled:opacity-50"
+          >
+            {loadingPicker ? "Apro…" : "📂 Seleziona da Drive"}
+          </button>
+        </div>
       </Field>
+
+      {draft.folderLabel && (
+        <p className="text-xs text-slate-400">
+          Cartella selezionata: <strong>{draft.folderLabel}</strong>
+        </p>
+      )}
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void loadFileList()}
+          disabled={loadingFiles || !draft.folderId}
+          className="shrink-0 rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium hover:bg-slate-600 disabled:opacity-50"
+        >
+          {loadingFiles ? "Carico…" : "📋 Carica elenco file"}
+        </button>
+        {files.length > 0 && (
+          <span className="text-xs text-slate-400">
+            {files.length} file trovati
+          </span>
+        )}
+      </div>
+
+      {driveError && (
+        <p className="text-xs text-red-400">{driveError}</p>
+      )}
+
+      {files.length > 0 && (
+        <div className="max-h-96 space-y-1 overflow-y-auto rounded-lg bg-slate-900/60 p-3">
+          {files.map((file) => {
+            const opts = fileOptions[file.id] ?? {};
+            const isImage = file.mimeType.startsWith("image/");
+            const isVideo = file.mimeType.startsWith("video/");
+            return (
+              <div
+                key={file.id}
+                className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg px-3 py-2 text-sm ${
+                  opts.skip
+                    ? "bg-slate-800/40 text-slate-500 line-through"
+                    : "bg-slate-800/70 text-slate-200"
+                }`}
+              >
+                {/* File name & icon */}
+                <span className="min-w-0 flex-1 truncate font-mono text-xs">
+                  {fileTypeIcon(file.mimeType)} {file.name}
+                </span>
+
+                {/* Skip toggle */}
+                <label className="flex items-center gap-1 text-xs whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={opts.skip ?? false}
+                    onChange={(e) =>
+                      patchFileOption(file.id, { skip: e.target.checked })
+                    }
+                  />
+                  Salta
+                </label>
+
+                {/* Video-specific options */}
+                {isVideo && (
+                  <>
+                    <label className="flex items-center gap-1 text-xs whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={opts.audioEnabled ?? false}
+                        onChange={(e) =>
+                          patchFileOption(file.id, {
+                            audioEnabled: e.target.checked,
+                          })
+                        }
+                      />
+                      🔊 Audio
+                    </label>
+                    <label className="flex items-center gap-1 text-xs whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={opts.autoDuration ?? false}
+                        onChange={(e) =>
+                          patchFileOption(file.id, {
+                            autoDuration: e.target.checked,
+                          })
+                        }
+                      />
+                      ⏱ Durata auto
+                    </label>
+                  </>
+                )}
+
+                {/* Image-specific options */}
+                {isImage && (
+                  <label className="flex items-center gap-1 text-xs whitespace-nowrap">
+                    Fit:
+                    <select
+                      value={opts.objectFit ?? "cover"}
+                      onChange={(e) =>
+                        patchFileOption(file.id, {
+                          objectFit: e.target.value as "contain" | "cover",
+                        })
+                      }
+                      className="rounded bg-slate-700 px-2 py-0.5 text-xs"
+                    >
+                      <option value="cover">Cover</option>
+                      <option value="contain">Contain</option>
+                    </select>
+                  </label>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <p className="text-xs text-slate-500">
         File <code>5_nome.jpg</code> → forzati alla pagina 5; senza prefisso
         numerico → riempiono le pagine vuote. Immagini e video sono salvati

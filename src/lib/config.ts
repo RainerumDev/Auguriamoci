@@ -32,6 +32,8 @@ export interface BaseWidgetConfig {
   page?: number;
   /** Per-page duration override (seconds). Falls back to the global default. */
   durationSeconds?: number;
+  /** Margin in pixels (or css value) for the widget container, e.g. "20px" or "5rem" */
+  margin?: string;
   /** Page background image (ignored by the drive widget). */
   background?: WidgetBackground;
 }
@@ -79,11 +81,20 @@ export interface CalendarWidgetConfig extends BaseWidgetConfig {
   template: string;
 }
 
+export interface DriveFileOptions {
+  skip?: boolean;
+  audioEnabled?: boolean;
+  objectFit?: "contain" | "cover";
+  autoDuration?: boolean;
+}
+
 export interface DriveWidgetConfig extends BaseWidgetConfig {
   type: "drive";
   /** Google Drive folder ID. */
   folderId: string;
   folderLabel: string;
+  /** Opzioni specifiche per i singoli file. La chiave è l'ID del file. */
+  fileOptions?: Record<string, DriveFileOptions>;
 }
 
 export type WidgetConfig =
@@ -99,6 +110,7 @@ export interface AppConfig {
    * Created by the user in Google Cloud Console for a "Web application".
    */
   googleClientId: string;
+  googleApiKey: string;
   /** Background data refresh interval, in minutes. */
   updateIntervalMinutes: number;
   /** Default page duration, in seconds. */
@@ -109,6 +121,7 @@ export interface AppConfig {
 export const DEFAULT_CONFIG: AppConfig = {
   version: CONFIG_VERSION,
   googleClientId: "",
+  googleApiKey: "",
   updateIntervalMinutes: 30,
   defaultPageDurationSeconds: 15,
   widgets: [],
@@ -150,6 +163,8 @@ export function parseConfigJson(raw: string): AppConfig {
     version: CONFIG_VERSION,
     googleClientId:
       typeof cfg.googleClientId === "string" ? cfg.googleClientId : "",
+    googleApiKey:
+      typeof cfg.googleApiKey === "string" ? cfg.googleApiKey : "",
     updateIntervalMinutes:
       typeof cfg.updateIntervalMinutes === "number" &&
       cfg.updateIntervalMinutes >= 1

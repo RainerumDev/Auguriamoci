@@ -31,6 +31,7 @@ export default function SettingsOverlay({
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [clientIdDraft, setClientIdDraft] = useState(config.googleClientId);
+  const [apiKeyDraft, setApiKeyDraft] = useState(config.googleApiKey);
   const [editing, setEditing] = useState<WidgetConfig | null>(null);
 
   const saveWidget = (widget: WidgetConfig) => {
@@ -66,6 +67,13 @@ export default function SettingsOverlay({
     const trimmed = clientIdDraft.trim();
     if (trimmed !== config.googleClientId) {
       onConfigChange({ ...config, googleClientId: trimmed });
+    }
+  };
+
+  const saveApiKey = () => {
+    const trimmed = apiKeyDraft.trim();
+    if (trimmed !== config.googleApiKey) {
+      onConfigChange({ ...config, googleApiKey: trimmed });
     }
   };
 
@@ -113,6 +121,7 @@ export default function SettingsOverlay({
       >
         {editing ? (
           <WidgetEditor
+            config={config}
             initial={editing}
             onSave={saveWidget}
             onCancel={() => setEditing(null)}
@@ -144,6 +153,18 @@ export default function SettingsOverlay({
               onChange={(e) => setClientIdDraft(e.target.value)}
               onBlur={saveClientId}
               placeholder="1234567890-xxxxxxxx.apps.googleusercontent.com"
+              spellCheck={false}
+              className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs mb-3"
+            />
+            <span className="mb-1 block text-slate-300">
+              Google API Key (Richiesta per Google Picker per Drive)
+            </span>
+            <input
+              type="text"
+              value={apiKeyDraft}
+              onChange={(e) => setApiKeyDraft(e.target.value)}
+              onBlur={saveApiKey}
+              placeholder="AIzaSy..."
               spellCheck={false}
               className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs"
             />

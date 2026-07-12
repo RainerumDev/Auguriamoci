@@ -31,5 +31,12 @@ interface Window {
         revoke(accessToken: string, done?: () => void): void;
       };
     };
+    /** Google Picker API, loaded on demand via gapi (no official typings). */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    picker?: any;
+  };
+  /** Google API loader script (https://apis.google.com/js/api.js). */
+  gapi?: {
+    load(name: string, callback: () => void): void;
   };
 }

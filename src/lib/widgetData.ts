@@ -103,10 +103,91 @@ const IT_TIME = new Intl.DateTimeFormat("it-IT", {
   minute: "2-digit",
 });
 
+/* Formatters used by formatPeriodo for partial date fragments. */
+const IT_WEEKDAY_DAY = new Intl.DateTimeFormat("it-IT", {
+  weekday: "long",
+  day: "numeric",
+});
+const IT_MONTH = new Intl.DateTimeFormat("it-IT", { month: "long" });
+
+/**
+ * Build an intelligently formatted Italian period string for a calendar event.
+ *
+ * Rules:
+ * - All-day events: Google Calendar sends `end` as exclusive (next day).
+ *   A single all-day event has end = start + 1 day → treated as single-day.
+ *   Multi-day all-day events: subtract 1 day from end to get the inclusive end.
+ * - Year is only included when start and end years differ.
+ * - "dalle X alle Y" for same-day time ranges; "alle X" for a single time.
+ * - "da ... a ..." for multi-day ranges.
+ */
+function formatPeriodo(start: Date, end: Date, allDay: boolean): string {
+  let effectiveEnd = end;
+
+  if (allDay) {
+    // Google Calendar all-day end is exclusive; subtract 1 day for inclusive end.
+    effectiveEnd = new Date(
+      end.getFullYear(),
+      end.getMonth(),
+      end.getDate() - 1,
+    );
+  }
+
+  const sameDay =
+    start.getFullYear() === effectiveEnd.getFullYear() &&
+    start.getMonth() === effectiveEnd.getMonth() &&
+    start.getDate() === effectiveEnd.getDate();
+
+  if (sameDay) {
+    // Single day
+    const dayStr = IT_DATE.format(start); // "domenica 12 luglio"
+    if (allDay) return dayStr;
+    const startTime = IT_TIME.format(start);
+    const endTime = IT_TIME.format(effectiveEnd);
+    if (startTime === endTime || end <= start) {
+      // Only start time
+      return `${dayStr} alle ${startTime}`;
+    }
+    return `${dayStr} dalle ${startTime} alle ${endTime}`;
+  }
+
+  // Multi-day
+  const sameMonth =
+    start.getMonth() === effectiveEnd.getMonth() &&
+    start.getFullYear() === effectiveEnd.getFullYear();
+  const sameYear = start.getFullYear() === effectiveEnd.getFullYear();
+
+  if (allDay) {
+    if (sameMonth) {
+      // "da domenica 12 a martedì 14 luglio"
+      return `da ${IT_WEEKDAY_DAY.format(start)} a ${IT_WEEKDAY_DAY.format(effectiveEnd)} ${IT_MONTH.format(effectiveEnd)}`;
+    }
+    if (sameYear) {
+      // "da domenica 12 luglio a mercoledì 12 agosto"
+      return `da ${IT_DATE.format(start)} a ${IT_DATE.format(effectiveEnd)}`;
+    }
+    // Different years: include year
+    return `da ${IT_DATE.format(start)} ${start.getFullYear()} a ${IT_DATE.format(effectiveEnd)} ${effectiveEnd.getFullYear()}`;
+  }
+
+  // Multi-day with times
+  const startTime = IT_TIME.format(start);
+  const endTime = IT_TIME.format(effectiveEnd);
+
+  if (sameMonth) {
+    return `da ${IT_WEEKDAY_DAY.format(start)} alle ${startTime} a ${IT_WEEKDAY_DAY.format(effectiveEnd)} ${IT_MONTH.format(effectiveEnd)} alle ${endTime}`;
+  }
+  if (sameYear) {
+    return `da ${IT_DATE.format(start)} alle ${startTime} a ${IT_DATE.format(effectiveEnd)} alle ${endTime}`;
+  }
+  // Different years
+  return `da ${IT_DATE.format(start)} ${start.getFullYear()} alle ${startTime} a ${IT_DATE.format(effectiveEnd)} ${effectiveEnd.getFullYear()} alle ${endTime}`;
+}
+
 /**
  * Calendar events (PRD §6.3). Fixed placeholders: {titolo} {data_inizio}
- * {ora_inizio} {descrizione} {luogo}. Events already ended are dropped
- * (cached data may be hours old).
+ * {ora_inizio} {data_fine} {ora_fine} {periodo} {descrizione} {luogo}.
+ * Events already ended are dropped (cached data may be hours old).
  */
 export function buildCalendarItems(
   widget: Pick<CalendarWidgetConfig, "lookAheadDays" | "template">,
@@ -141,6 +222,13 @@ export function buildCalendarItems(
         luogo: event.location,
         data_inizio: IT_DATE.format(start),
         ora_inizio: event.allDay ? "" : IT_TIME.format(start),
+        data_fine: IT_DATE.format(new Date(
+          event.allDay
+            ? new Date(end.getFullYear(), end.getMonth(), end.getDate() - 1).getTime()
+            : end.getTime(),
+        )),
+        ora_fine: event.allDay ? "" : IT_TIME.format(end),
+        periodo: formatPeriodo(start, end, event.allDay),
       }),
       daysUntil: Math.max(
         0,
@@ -152,3 +240,4 @@ export function buildCalendarItems(
   }
   return items;
 }
+

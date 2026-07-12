@@ -51,6 +51,33 @@ export function loadGsi(): Promise<void> {
   return gsiLoader;
 }
 
+let pickerLoader: Promise<void> | null = null;
+
+export function loadPicker(): Promise<void> {
+  if (window.google?.picker) return Promise.resolve();
+  if (pickerLoader) return pickerLoader;
+  pickerLoader = new Promise((resolve, reject) => {
+    // If gapi is already loaded
+    if (window.gapi) {
+      window.gapi.load("picker", resolve);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://apis.google.com/js/api.js";
+    script.async = true;
+    script.onload = () => {
+      window.gapi!.load("picker", resolve);
+    };
+    script.onerror = () => {
+      pickerLoader = null;
+      script.remove();
+      reject(new Error("Impossibile caricare Google Picker API. Sei offline?"));
+    };
+    document.head.appendChild(script);
+  });
+  return pickerLoader;
+}
+
 export function getStoredToken(): StoredToken | null {
   try {
     const raw = localStorage.getItem(TOKEN_KEY);
