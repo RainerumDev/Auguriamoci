@@ -189,6 +189,21 @@ export default function Player({ config, onConfigChange }: Props) {
         </div>
       )}
 
+      {/* Last sync had failures: data on screen may be stale. Details are
+          in the settings overlay; playback continues from cache. */}
+      {online &&
+        sync.lastReport &&
+        (sync.lastReport.blocked ||
+          sync.lastReport.results.some((r) => !r.ok)) && (
+          <div
+            title="Ultima sincronizzazione con errori: apri le impostazioni per i dettagli"
+            className="absolute bottom-4 left-4 text-3xl opacity-40 select-none"
+            aria-label="errore sincronizzazione"
+          >
+            ⚠️
+          </div>
+        )}
+
       {/* Offline indicator (PRD §4.2): playback never stops. */}
       {!online && (
         <div
