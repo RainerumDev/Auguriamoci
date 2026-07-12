@@ -17,6 +17,8 @@ export interface WidgetItem {
   kind: "widget";
   widgetId: string;
   durationSeconds?: number;
+  /** CSS margin ("2rem", "20px") applied around the page content. */
+  margin?: string;
 }
 
 export interface FileItem {
@@ -76,7 +78,12 @@ export function buildTimeline(
   for (const w of widgets) {
     if (!w.enabled || w.type === "drive") continue;
     place(
-      { kind: "widget", widgetId: w.id, durationSeconds: w.durationSeconds },
+      {
+        kind: "widget",
+        widgetId: w.id,
+        durationSeconds: w.durationSeconds,
+        margin: w.margin,
+      },
       w.page,
     );
   }

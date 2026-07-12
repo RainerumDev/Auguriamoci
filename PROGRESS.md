@@ -88,9 +88,10 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
 - [x] Opzioni per-file: video audio on/off, foto cover/contain — UI + runtime
 - [x] Durata video automatica (avanza su 'ended', timer 15min di sicurezza)
 - [x] Calendario: {data_fine} {ora_fine} {periodo} intelligente (testato)
-- [ ] Impaginazione intelligente: margini configurabili, auto-fit testo,
-      scroll/paginazione interna se troppi item ← PROSSIMO (unico rimasto)
-- [ ] Picker anche per Fogli (compleanni/onomastici) e file sfondo
+- [x] Impaginazione intelligente — AutoFitPage: margine CSS per widget
+      (campo `margin`), misura contenuto, scala fino a 0.6, oltre spezza in
+      sotto-pagine ruotate nella durata pagina (pallini indicatori)
+- [ ] Picker anche per Fogli (compleanni/onomastici) e file sfondo ← PROSSIMO
 
 ## Bug noti
 

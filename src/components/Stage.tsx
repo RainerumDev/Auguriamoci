@@ -1,5 +1,6 @@
 import type { RenderItem } from "../lib/widgetData";
 import type { ResolvedPage } from "../lib/timeline";
+import AutoFitPage from "./AutoFitPage";
 
 interface Props {
   page: ResolvedPage;
@@ -28,14 +29,9 @@ export default function Stage({
   if (item.kind === "widget") {
     const items = renderData.get(item.widgetId) ?? [];
     const bgUrl = backgroundUrls.get(item.widgetId);
-    // Few items: centered column. Many: two-column grid so nothing overflows.
-    const layout =
-      items.length > 3
-        ? "grid grid-cols-2 content-center justify-items-center gap-8"
-        : "flex flex-col items-center justify-center gap-10";
     return (
       <div
-        className={`h-full overflow-hidden p-12 text-center ${layout}`}
+        className="h-full overflow-hidden"
         style={
           bgUrl
             ? {
@@ -46,11 +42,11 @@ export default function Stage({
             : undefined
         }
       >
-        {items.map((it, i) => (
-          // Template HTML comes from the local config (trusted); data values
-          // inside it are escaped by interpolate().
-          <div key={i} dangerouslySetInnerHTML={{ __html: it.html }} />
-        ))}
+        <AutoFitPage
+          items={items}
+          margin={item.margin}
+          durationSeconds={page.durationSeconds}
+        />
       </div>
     );
   }
