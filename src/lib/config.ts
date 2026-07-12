@@ -20,6 +20,8 @@ export interface WidgetBackground {
   fileId?: string;
   /** data: URL (source = "embedded"); travels inside config exports. */
   dataUrl?: string;
+  /** How the background image fills the page. Default: "fill". */
+  size?: "fill" | "cover" | "contain";
 }
 
 /** Per-side content margins (CSS values: "20px", "2rem", "12%"). */
@@ -107,7 +109,7 @@ export interface CalendarWidgetConfig extends BaseWidgetConfig {
 export interface DriveFileOptions {
   skip?: boolean;
   audioEnabled?: boolean;
-  objectFit?: "contain" | "cover";
+  objectFit?: "contain" | "cover" | "fill";
   autoDuration?: boolean;
 }
 

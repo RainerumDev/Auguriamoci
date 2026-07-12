@@ -25,6 +25,8 @@ export interface PresentationData {
   mediaUrls: Map<string, string>;
   /** widgetId -> background image URL (object URL or data URL). */
   backgroundUrls: Map<string, string>;
+  /** widgetId -> background sizing mode (defaults to "fill"). */
+  backgroundSizes: Map<string, "fill" | "cover" | "contain">;
 }
 
 const EMPTY: PresentationData = {
@@ -33,6 +35,7 @@ const EMPTY: PresentationData = {
   renderData: new Map(),
   mediaUrls: new Map(),
   backgroundUrls: new Map(),
+  backgroundSizes: new Map(),
 };
 
 /**
@@ -136,6 +139,7 @@ export function usePresentation(
 
       // Page backgrounds: embedded data URLs or cached Drive blobs.
       const backgroundUrls = new Map<string, string>();
+      const backgroundSizes = new Map<string, "fill" | "cover" | "contain">();
       for (const widget of config.widgets.filter((w) => w.enabled)) {
         const bg = widget.background;
         if (!bg) continue;
@@ -149,6 +153,9 @@ export function usePresentation(
             backgroundUrls.set(widget.id, url);
           }
         }
+        if (backgroundUrls.has(widget.id)) {
+          backgroundSizes.set(widget.id, bg.size ?? "fill");
+        }
       }
 
       const timeline = buildTimeline(config.widgets, driveFiles);
@@ -156,7 +163,14 @@ export function usePresentation(
       if (cancelled) {
         urls.forEach((u) => URL.revokeObjectURL(u));
       } else {
-        setData({ ready: true, timeline, renderData, mediaUrls, backgroundUrls });
+        setData({
+          ready: true,
+          timeline,
+          renderData,
+          mediaUrls,
+          backgroundUrls,
+          backgroundSizes,
+        });
       }
     })();
 

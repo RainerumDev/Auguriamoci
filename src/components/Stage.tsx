@@ -8,6 +8,7 @@ interface Props {
   renderData: Map<string, RenderItem[]>;
   mediaUrls: Map<string, string>;
   backgroundUrls: Map<string, string>;
+  backgroundSizes?: Map<string, "fill" | "cover" | "contain">;
   /** Called when an auto-duration video finishes: the player advances. */
   onMediaEnd?: () => void;
 }
@@ -64,15 +65,21 @@ export default function Stage({
   renderData,
   mediaUrls,
   backgroundUrls,
+  backgroundSizes,
   onMediaEnd,
 }: Props) {
   const { item } = page;
   const bgUrl = backgroundUrls.get(item.widgetId);
+  const bgSize = backgroundSizes?.get(item.widgetId) ?? "fill";
+  // CSS: "fill" stretches (100% 100%), "cover" and "contain" map 1:1.
+  const bgSizeCss =
+    bgSize === "fill" ? "100% 100%" : bgSize === "cover" ? "cover" : "contain";
   const bgStyle = bgUrl
     ? {
         backgroundImage: `url(${bgUrl})`,
-        backgroundSize: "cover",
+        backgroundSize: bgSizeCss,
         backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
       }
     : undefined;
 
@@ -94,10 +101,13 @@ export default function Stage({
   let media: React.ReactNode = null;
   if (item.mimeType.startsWith("image/") && url) {
     // Default mirrors the editor's select: cover fills the screen.
+    const fitValue = opts.objectFit ?? "cover";
     const fit =
-      (opts.objectFit ?? "cover") === "cover"
+      fitValue === "cover"
         ? "object-cover"
-        : "object-contain";
+        : fitValue === "fill"
+          ? "object-fill"
+          : "object-contain";
     media = (
       <img src={url} alt={item.name} className={`h-full w-full ${fit}`} />
     );

@@ -166,6 +166,7 @@ export default function Player({ config, onConfigChange }: Props) {
             renderData={presentation.renderData}
             mediaUrls={presentation.mediaUrls}
             backgroundUrls={presentation.backgroundUrls}
+            backgroundSizes={presentation.backgroundSizes}
             onMediaEnd={advance}
           />
         </div>

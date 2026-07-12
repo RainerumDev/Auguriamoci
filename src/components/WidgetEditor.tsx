@@ -980,6 +980,26 @@ function BackgroundField({
         </div>
       )}
 
+      {mode !== "none" && background && (
+        <label className="flex items-center gap-2 text-xs">
+          Ridimensionamento:
+          <select
+            value={background.size ?? "fill"}
+            onChange={(e) =>
+              onChange({
+                ...background,
+                size: e.target.value as "fill" | "cover" | "contain",
+              })
+            }
+            className="rounded bg-slate-700 px-2 py-1 text-xs"
+          >
+            <option value="fill">Fill (deforma per riempire)</option>
+            <option value="cover">Cover (riempie, taglia)</option>
+            <option value="contain">Contain (adatta, spazi vuoti)</option>
+          </select>
+        </label>
+      )}
+
       <input
         ref={fileInput}
         type="file"
