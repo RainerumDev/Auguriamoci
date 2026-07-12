@@ -20,6 +20,7 @@ import {
 import { listCalendars, type CalendarListEntry } from "../lib/google/calendar";
 import { suggestDateColumn } from "../lib/dates";
 import RichTemplateEditor from "./RichTemplateEditor";
+import MarginsField from "./MarginsField";
 
 interface Props {
   config: AppConfig;
@@ -37,19 +38,28 @@ function requireToken(): string {
   return token.accessToken;
 }
 
-/** Google Picker limited to spreadsheets. Resolves null when cancelled. */
-async function pickSpreadsheet(
+/**
+ * Google Picker restricted to one document view ("spreadsheets", "images").
+ * Resolves null when the user cancels.
+ */
+async function pickDriveDoc(
   apiKey: string,
+  view: "spreadsheets" | "images",
+  title: string,
 ): Promise<{ id: string; name: string } | null> {
   const token = requireToken();
   await loadPicker();
   const google = window.google!;
+  const viewId =
+    view === "spreadsheets"
+      ? google.picker.ViewId.SPREADSHEETS
+      : google.picker.ViewId.DOCS_IMAGES;
   return new Promise((resolve) => {
     const picker = new google.picker.PickerBuilder()
-      .addView(new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS))
+      .addView(new google.picker.DocsView(viewId))
       .setOAuthToken(token)
       .setDeveloperKey(apiKey)
-      .setTitle("Seleziona un foglio Google")
+      .setTitle(title)
       .setCallback(
         (data: { action: string; docs?: { id: string; name: string }[] }) => {
           if (data.action === "picked") resolve(data.docs?.[0] ?? null);
@@ -59,6 +69,11 @@ async function pickSpreadsheet(
       .build();
     picker.setVisible(true);
   });
+}
+
+/** Picker limited to spreadsheets. */
+function pickSpreadsheet(apiKey: string) {
+  return pickDriveDoc(apiKey, "spreadsheets", "Seleziona un foglio Google");
 }
 
 export default function WidgetEditor({ config, initial, onSave, onCancel }: Props) {
@@ -143,19 +158,11 @@ export default function WidgetEditor({ config, initial, onSave, onCancel }: Prop
           </label>
         </div>
 
-        <Field label="Margine (es: 20px, 2rem, vuoto = nessuno)">
-          <input
-            type="text"
-            value={draft.margin ?? ""}
-            onChange={(e) =>
-              patch({
-                margin: e.target.value || undefined,
-              })
-            }
-            placeholder="es. 20px, 2rem"
-            className="w-48 rounded-lg bg-slate-800 px-3 py-2 text-sm"
-          />
-        </Field>
+        <MarginsField
+          margin={draft.margin}
+          margins={draft.margins}
+          onChange={(margins) => patch({ margins, margin: undefined })}
+        />
 
         {draft.type === "birthdays" && (
           <SheetSourceFields
@@ -194,6 +201,7 @@ export default function WidgetEditor({ config, initial, onSave, onCancel }: Prop
             />
             <BackgroundField
               background={draft.background}
+              apiKey={config.googleApiKey}
               onChange={(background) => patch({ background })}
             />
           </>
@@ -854,9 +862,11 @@ const MAX_EMBEDDED_BG_BYTES = 2 * 1024 * 1024;
 
 function BackgroundField({
   background,
+  apiKey,
   onChange,
 }: {
   background?: WidgetBackground;
+  apiKey: string;
   onChange: (bg: WidgetBackground | undefined) => void;
 }) {
   const [driveInput, setDriveInput] = useState(
@@ -911,18 +921,48 @@ function BackgroundField({
       </div>
 
       {mode === "drive" && (
-        <input
-          type="text"
-          value={driveInput}
-          onChange={(e) => {
-            setDriveInput(e.target.value);
-            const id = extractDriveFileId(e.target.value);
-            onChange({ source: "drive", fileId: id ?? "" });
-          }}
-          placeholder="https://drive.google.com/file/d/…"
-          spellCheck={false}
-          className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs"
-        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={driveInput}
+            onChange={(e) => {
+              setDriveInput(e.target.value);
+              const id = extractDriveFileId(e.target.value);
+              onChange({ source: "drive", fileId: id ?? "" });
+            }}
+            placeholder="https://drive.google.com/file/d/…"
+            spellCheck={false}
+            className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs"
+          />
+          <button
+            type="button"
+            disabled={!apiKey}
+            title={
+              apiKey
+                ? "Scegli l'immagine da Google Drive"
+                : "Inserisci la Google API Key nelle impostazioni"
+            }
+            onClick={() => {
+              setError(null);
+              pickDriveDoc(apiKey, "images", "Seleziona un'immagine")
+                .then((doc) => {
+                  if (!doc) return;
+                  setDriveInput(doc.id);
+                  onChange({ source: "drive", fileId: doc.id });
+                })
+                .catch((e) =>
+                  setError(
+                    e instanceof Error
+                      ? e.message
+                      : "Impossibile aprire il Picker.",
+                  ),
+                );
+            }}
+            className="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-xs font-medium text-slate-900 hover:bg-amber-500 disabled:opacity-50"
+          >
+            🖼 Da Drive
+          </button>
+        </div>
       )}
 
       {mode === "embedded" && background?.dataUrl && (

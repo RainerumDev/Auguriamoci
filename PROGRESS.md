@@ -93,7 +93,12 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
       sotto-pagine ruotate nella durata pagina (pallini indicatori)
 - [x] Picker anche per Fogli (compleanni/onomastici): "📊 Da Drive" apre
       Picker SPREADSHEETS e auto-carica le colonne
-- [ ] Picker per file sfondo (campo BackgroundField accetta ancora solo URL/ID)
+- [x] Picker per file sfondo ("🖼 Da Drive", vista DOCS_IMAGES)
+- [x] Margini per lato (Sopra/Destra/Sotto/Sinistra, CSS o %) + selettore
+      visuale: drag su riquadro 16:9 disegna il rettangolo del contenuto,
+      margini compilati in % (MarginsField; legacy `margin` migrato al primo
+      salvataggio)
+- [x] Riordino widget ▲▼ in impostazioni (ordine = riempimento pagine)
 
 ## Bug noti
 

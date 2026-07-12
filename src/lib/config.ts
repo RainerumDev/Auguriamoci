@@ -22,6 +22,14 @@ export interface WidgetBackground {
   dataUrl?: string;
 }
 
+/** Per-side content margins (CSS values: "20px", "2rem", "12%"). */
+export interface WidgetMargins {
+  top: string;
+  right: string;
+  bottom: string;
+  left: string;
+}
+
 export interface BaseWidgetConfig {
   id: string;
   type: WidgetType;
@@ -32,10 +40,21 @@ export interface BaseWidgetConfig {
   page?: number;
   /** Per-page duration override (seconds). Falls back to the global default. */
   durationSeconds?: number;
-  /** Margin in pixels (or css value) for the widget container, e.g. "20px" or "5rem" */
+  /** Legacy single margin (all sides). Superseded by `margins`. */
   margin?: string;
+  /** Per-side content margins; define the rectangle where content renders. */
+  margins?: WidgetMargins;
   /** Page background image (ignored by the drive widget). */
   background?: WidgetBackground;
+}
+
+/** CSS padding shorthand for the content box (margins > legacy margin). */
+export function widgetPadding(w: BaseWidgetConfig): string | undefined {
+  if (w.margins) {
+    const { top, right, bottom, left } = w.margins;
+    return `${top || "0px"} ${right || "0px"} ${bottom || "0px"} ${left || "0px"}`;
+  }
+  return w.margin;
 }
 
 /** Column mapping: template field name -> sheet header (as written in row 1). */

@@ -11,13 +11,14 @@
  *    random on EVERY full cycle (shuffle on collision).
  * 5. Every page lasts N seconds: global default, overridable per widget.
  */
+import { widgetPadding } from "./config";
 import type { DriveFileOptions, WidgetConfig } from "./config";
 
 export interface WidgetItem {
   kind: "widget";
   widgetId: string;
   durationSeconds?: number;
-  /** CSS margin ("2rem", "20px") applied around the page content. */
+  /** CSS padding shorthand defining the content rectangle. */
   margin?: string;
 }
 
@@ -82,7 +83,7 @@ export function buildTimeline(
         kind: "widget",
         widgetId: w.id,
         durationSeconds: w.durationSeconds,
-        margin: w.margin,
+        margin: widgetPadding(w),
       },
       w.page,
     );

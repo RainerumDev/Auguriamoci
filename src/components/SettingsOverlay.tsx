@@ -54,6 +54,16 @@ export default function SettingsOverlay({
     }
   };
 
+  /** Config order drives page filling: swap the widget with its neighbour. */
+  const moveWidget = (id: string, direction: -1 | 1) => {
+    const index = config.widgets.findIndex((w) => w.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= config.widgets.length) return;
+    const widgets = [...config.widgets];
+    [widgets[index], widgets[target]] = [widgets[target], widgets[index]];
+    onConfigChange({ ...config, widgets });
+  };
+
   const toggleWidget = (id: string) => {
     onConfigChange({
       ...config,
@@ -321,6 +331,26 @@ export default function SettingsOverlay({
                   </span>
                   <span className="ml-auto text-slate-400">
                     {w.page != null ? `pagina ${w.page}` : "auto"}
+                  </span>
+                  <span className="flex flex-col">
+                    <button
+                      onClick={() => moveWidget(w.id, -1)}
+                      disabled={config.widgets[0].id === w.id}
+                      title="Sposta su (ordine di riempimento pagine)"
+                      className="rounded px-1 text-xs leading-3 text-slate-400 hover:bg-slate-700 disabled:opacity-30"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      onClick={() => moveWidget(w.id, 1)}
+                      disabled={
+                        config.widgets[config.widgets.length - 1].id === w.id
+                      }
+                      title="Sposta giù (ordine di riempimento pagine)"
+                      className="rounded px-1 text-xs leading-3 text-slate-400 hover:bg-slate-700 disabled:opacity-30"
+                    >
+                      ▼
+                    </button>
                   </span>
                   <button
                     onClick={() => setEditing(w)}
