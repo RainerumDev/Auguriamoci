@@ -78,18 +78,24 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
   - README completo (setup Google Cloud Console, comandi, architettura)
   - Stage: griglia 2 colonne se >3 item nella pagina widget
 
-## Richieste UTENTE (2026-07-11, priorità alta)
+## Richieste UTENTE (2026-07-11/12)
 
-- [ ] Editor HTML stile Word (WYSIWYG) in personalizzazione widget ← iter 7
-- [ ] Click su nome colonna inserisce placeholder alla posizione cursore ← iter 7
-- [ ] Sfondo schermata compleanni: file Drive O upload salvato base64 anche
-      nell'export config ← iter 7
-- [ ] Google Picker per scegliere file/fogli/cartelle (se possibile; richiede
-      API key oltre a client ID)
-- [ ] Editor widget Drive: elenco file della cartella + skip per-file
-      (memorizza id file da saltare)
-- [ ] Opzioni per-file media: video → audio on/off; foto → cover/crop/…;
-      per cartella: elenco con opzioni per ogni file
+- [x] Editor HTML stile Word (WYSIWYG) — RichTemplateEditor
+- [x] Click su nome colonna inserisce placeholder alla posizione cursore
+- [x] Sfondo pagina widget: file Drive O upload base64 nell'export config
+- [x] Google Picker (widget Drive: cartelle+file; API key in impostazioni)
+- [x] Editor widget Drive: elenco file + skip per-file (`fileOptions`)
+- [x] Opzioni per-file: video audio on/off, foto cover/contain — UI + runtime
+- [x] Durata video automatica (avanza su 'ended', timer 15min di sicurezza)
+- [x] Calendario: {data_fine} {ora_fine} {periodo} intelligente (testato)
+- [ ] Impaginazione intelligente: margini configurabili, auto-fit testo,
+      scroll/paginazione interna se troppi item ← PROSSIMO (unico rimasto)
+- [ ] Picker anche per Fogli (compleanni/onomastici) e file sfondo
+
+## Bug noti
+
+- Silent refresh GIS ritenta popup a raffica quando bloccato (spam console
+  GSI_LOGGER): aggiungere cooldown/backoff in useAuth/useSync.
 
 ## Backlog / migliorie possibili
 

@@ -6,6 +6,8 @@ interface Props {
   renderData: Map<string, RenderItem[]>;
   mediaUrls: Map<string, string>;
   backgroundUrls: Map<string, string>;
+  /** Called when an auto-duration video finishes: the player advances. */
+  onMediaEnd?: () => void;
 }
 
 /** Google native files embed via /preview instead of /edit. */
@@ -19,6 +21,7 @@ export default function Stage({
   renderData,
   mediaUrls,
   backgroundUrls,
+  onMediaEnd,
 }: Props) {
   const { item } = page;
 
@@ -53,23 +56,26 @@ export default function Stage({
   }
 
   const url = mediaUrls.get(item.fileId);
+  const opts = item.options ?? {};
   if (item.mimeType.startsWith("image/") && url) {
-    return (
-      <img
-        src={url}
-        alt={item.name}
-        className="h-full w-full object-contain"
-      />
-    );
+    // Default mirrors the editor's select: cover fills the screen.
+    const fit =
+      (opts.objectFit ?? "cover") === "cover"
+        ? "object-cover"
+        : "object-contain";
+    return <img src={url} alt={item.name} className={`h-full w-full ${fit}`} />;
   }
   if (item.mimeType.startsWith("video/") && url) {
+    // autoDuration: play once and tell the player to advance; otherwise
+    // loop for the fixed page duration.
     return (
       <video
         src={url}
         autoPlay
-        muted
-        loop
+        muted={!opts.audioEnabled}
+        loop={!opts.autoDuration}
         playsInline
+        onEnded={opts.autoDuration ? onMediaEnd : undefined}
         className="h-full w-full object-contain"
       />
     );

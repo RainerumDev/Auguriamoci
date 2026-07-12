@@ -592,11 +592,15 @@ function DriveFields({
               setInput(doc.id);
               patch({ folderId: doc.id, folderLabel: doc.name });
             } else {
-              // File selected: use parentId if available, otherwise use the file's own id as reference
+              // File selected: adopt its parent folder when known.
               const parentId = doc.parentId;
               if (parentId) {
                 setInput(parentId);
                 patch({ folderId: parentId });
+              } else {
+                setDriveError(
+                  "Seleziona una cartella (il file scelto non espone la cartella di origine).",
+                );
               }
             }
           },

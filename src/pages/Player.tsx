@@ -70,24 +70,19 @@ export default function Player({ config, onConfigChange }: Props) {
     setPageIndex(0);
   }, [cycleKey]);
 
-  useEffect(() => {
-    const current = cycle[pageIndex];
-    if (!current) return;
-    const timer = window.setTimeout(() => {
-      if (pageIndex + 1 < cycle.length) {
-        setPageIndex(pageIndex + 1);
-      } else {
-        setCycle(
-          resolveCycle(
-            presentation.timeline,
-            config.defaultPageDurationSeconds,
-            isAvailable,
-          ),
-        );
-        setPageIndex(0);
-      }
-    }, current.durationSeconds * 1000);
-    return () => window.clearTimeout(timer);
+  const advance = useCallback(() => {
+    if (pageIndex + 1 < cycle.length) {
+      setPageIndex(pageIndex + 1);
+    } else {
+      setCycle(
+        resolveCycle(
+          presentation.timeline,
+          config.defaultPageDurationSeconds,
+          isAvailable,
+        ),
+      );
+      setPageIndex(0);
+    }
   }, [
     cycle,
     pageIndex,
@@ -95,6 +90,20 @@ export default function Player({ config, onConfigChange }: Props) {
     config.defaultPageDurationSeconds,
     isAvailable,
   ]);
+
+  useEffect(() => {
+    const current = cycle[pageIndex];
+    if (!current) return;
+    // Auto-duration videos advance on their 'ended' event (Stage callback);
+    // the long timeout is only a safety net if the video never ends.
+    const isAutoVideo =
+      current.item.kind === "file" &&
+      current.item.mimeType.startsWith("video/") &&
+      current.item.options?.autoDuration === true;
+    const ms = isAutoVideo ? 15 * 60_000 : current.durationSeconds * 1000;
+    const timer = window.setTimeout(advance, ms);
+    return () => window.clearTimeout(timer);
+  }, [cycle, pageIndex, advance]);
 
   const currentPage = cycle[pageIndex] ?? null;
 
@@ -139,6 +148,7 @@ export default function Player({ config, onConfigChange }: Props) {
             renderData={presentation.renderData}
             mediaUrls={presentation.mediaUrls}
             backgroundUrls={presentation.backgroundUrls}
+            onMediaEnd={advance}
           />
         </div>
       ) : (

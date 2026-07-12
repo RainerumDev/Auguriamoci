@@ -11,7 +11,7 @@
  *    random on EVERY full cycle (shuffle on collision).
  * 5. Every page lasts N seconds: global default, overridable per widget.
  */
-import type { WidgetConfig } from "./config";
+import type { DriveFileOptions, WidgetConfig } from "./config";
 
 export interface WidgetItem {
   kind: "widget";
@@ -27,6 +27,8 @@ export interface FileItem {
   name: string;
   mimeType: string;
   webViewLink?: string;
+  /** Per-file playback options from the widget config. */
+  options?: DriveFileOptions;
 }
 
 export type TimelineItem = WidgetItem | FileItem;
@@ -43,6 +45,7 @@ export interface DriveFileForTimeline {
   name: string;
   mimeType: string;
   webViewLink?: string;
+  options?: DriveFileOptions;
 }
 
 /** "5_sfondo.jpg" -> 5; "15-promo.mp4" -> 15; "3 avviso.png" -> 3; else null. */
@@ -86,6 +89,7 @@ export function buildTimeline(
         name: f.name,
         mimeType: f.mimeType,
         webViewLink: f.webViewLink,
+        options: f.options,
       },
       parsePagePrefix(f.name),
     );

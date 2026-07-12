@@ -134,6 +134,7 @@ async function syncWidget(
     case "drive": {
       const payload = await listFolderFiles(widget.folderId, accessToken);
       for (const file of payload.files) {
+        if (widget.fileOptions?.[file.id]?.skip) continue;
         if (!isDownloadableMedia(file)) {
           if (
             (file.mimeType.startsWith("image/") ||
@@ -200,7 +201,10 @@ async function pruneMedia(config: AppConfig): Promise<void> {
     const row = await db.datasets.get(widget.id);
     if (row?.kind === "drive") {
       const payload = row.payload as { files?: { id: string }[] };
-      for (const f of payload.files ?? []) wanted.add(f.id);
+      for (const f of payload.files ?? []) {
+        if (widget.fileOptions?.[f.id]?.skip) continue;
+        wanted.add(f.id);
+      }
     }
   }
   const allKeys = (await db.media.toCollection().primaryKeys()) as string[];

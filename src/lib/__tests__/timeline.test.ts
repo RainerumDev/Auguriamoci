@@ -123,6 +123,24 @@ describe("resolveCycle", () => {
     expect(pages[0].item.kind).toBe("file");
   });
 
+  it("carries per-file options onto timeline items", () => {
+    const timeline = buildTimeline(
+      [],
+      [
+        {
+          ...file("v.mp4"),
+          options: { audioEnabled: true, autoDuration: true },
+        },
+      ],
+    );
+    const item = timeline[0].candidates[0];
+    expect(item.kind).toBe("file");
+    expect((item as { options?: object }).options).toEqual({
+      audioEnabled: true,
+      autoDuration: true,
+    });
+  });
+
   it("shuffles collisions using the provided rng", () => {
     const timeline = buildTimeline([], [file("5_a.jpg"), file("5_b.jpg")]);
     const first = resolveCycle(timeline, 15, available, () => 0);

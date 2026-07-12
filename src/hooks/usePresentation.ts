@@ -104,12 +104,15 @@ export function usePresentation(
           case "drive":
             if (dataset.kind === "drive") {
               for (const f of (dataset.payload as DrivePayload).files) {
+                const options = widget.fileOptions?.[f.id];
+                if (options?.skip) continue;
                 driveFiles.push({
                   widgetId: widget.id,
                   fileId: f.id,
                   name: f.name,
                   mimeType: f.mimeType,
                   webViewLink: f.webViewLink,
+                  options,
                 });
               }
             }

@@ -221,3 +221,80 @@ describe("buildCalendarItems", () => {
     expect(items[0].html).toBe("Festa[]");
   });
 });
+
+describe("{periodo} smart formatting", () => {
+  const now = new Date(2026, 6, 11, 8, 0);
+
+  const periodo = (
+    event: Partial<{
+      start: string;
+      end: string;
+      allDay: boolean;
+    }>,
+  ): string => {
+    const items = buildCalendarItems(
+      { lookAheadDays: 60, template: "{periodo}" },
+      {
+        events: [
+          {
+            id: "1",
+            title: "E",
+            description: "",
+            location: "",
+            start: event.start!,
+            end: event.end ?? event.start!,
+            allDay: event.allDay ?? false,
+          },
+        ],
+      },
+      now,
+    );
+    return items[0]?.html ?? "";
+  };
+
+  it("same day with times: 'dalle X alle Y'", () => {
+    expect(
+      periodo({
+        start: new Date(2026, 6, 12, 10, 0).toISOString(),
+        end: new Date(2026, 6, 12, 12, 0).toISOString(),
+      }),
+    ).toBe("domenica 12 luglio dalle 10:00 alle 12:00");
+  });
+
+  it("same day single time: 'alle X'", () => {
+    expect(
+      periodo({
+        start: new Date(2026, 6, 12, 10, 0).toISOString(),
+      }),
+    ).toBe("domenica 12 luglio alle 10:00");
+  });
+
+  it("single all-day event: day only (exclusive end handled)", () => {
+    expect(periodo({ start: "2026-07-12", end: "2026-07-13", allDay: true })).toBe(
+      "domenica 12 luglio",
+    );
+  });
+
+  it("multi-day all-day same month: month mentioned once", () => {
+    expect(periodo({ start: "2026-07-12", end: "2026-07-15", allDay: true })).toBe(
+      "da domenica 12 a martedì 14 luglio",
+    );
+  });
+
+  it("multi-day all-day across months: full dates", () => {
+    expect(periodo({ start: "2026-07-12", end: "2026-08-13", allDay: true })).toBe(
+      "da domenica 12 luglio a mercoledì 12 agosto",
+    );
+  });
+
+  it("multi-day with times across months", () => {
+    expect(
+      periodo({
+        start: new Date(2026, 6, 12, 10, 0).toISOString(),
+        end: new Date(2026, 7, 12, 12, 0).toISOString(),
+      }),
+    ).toBe(
+      "da domenica 12 luglio alle 10:00 a mercoledì 12 agosto alle 12:00",
+    );
+  });
+});
