@@ -91,12 +91,14 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
 - [x] Impaginazione intelligente — AutoFitPage: margine CSS per widget
       (campo `margin`), misura contenuto, scala fino a 0.6, oltre spezza in
       sotto-pagine ruotate nella durata pagina (pallini indicatori)
-- [ ] Picker anche per Fogli (compleanni/onomastici) e file sfondo ← PROSSIMO
+- [x] Picker anche per Fogli (compleanni/onomastici): "📊 Da Drive" apre
+      Picker SPREADSHEETS e auto-carica le colonne
+- [ ] Picker per file sfondo (campo BackgroundField accetta ancora solo URL/ID)
 
 ## Bug noti
 
-- Silent refresh GIS ritenta popup a raffica quando bloccato (spam console
-  GSI_LOGGER): aggiungere cooldown/backoff in useAuth/useSync.
+- [x] Silent refresh GIS: aggiunto cooldown 5 min dopo fallimento
+      (auth.ts trySilentRefresh) — stop spam popup bloccati.
 
 ## Backlog / migliorie possibili
 

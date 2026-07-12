@@ -168,13 +168,24 @@ export async function signIn(
   });
 }
 
+/** After a failed silent refresh, don't retry for a while: every attempt
+ *  can open (and get blocked as) a popup, spamming the console. */
+const SILENT_RETRY_COOLDOWN_MS = 5 * 60_000;
+let lastSilentFailureAt = 0;
+
 /** Try to renew an expired token without any UI. Returns null on failure. */
 export async function trySilentRefresh(
   clientId: string,
 ): Promise<StoredToken | null> {
+  if (Date.now() - lastSilentFailureAt < SILENT_RETRY_COOLDOWN_MS) {
+    return null;
+  }
   try {
-    return await signIn(clientId, { silent: true });
+    const token = await signIn(clientId, { silent: true });
+    lastSilentFailureAt = 0;
+    return token;
   } catch {
+    lastSilentFailureAt = Date.now();
     return null;
   }
 }

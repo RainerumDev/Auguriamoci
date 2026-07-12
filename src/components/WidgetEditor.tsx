@@ -37,6 +37,30 @@ function requireToken(): string {
   return token.accessToken;
 }
 
+/** Google Picker limited to spreadsheets. Resolves null when cancelled. */
+async function pickSpreadsheet(
+  apiKey: string,
+): Promise<{ id: string; name: string } | null> {
+  const token = requireToken();
+  await loadPicker();
+  const google = window.google!;
+  return new Promise((resolve) => {
+    const picker = new google.picker.PickerBuilder()
+      .addView(new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS))
+      .setOAuthToken(token)
+      .setDeveloperKey(apiKey)
+      .setTitle("Seleziona un foglio Google")
+      .setCallback(
+        (data: { action: string; docs?: { id: string; name: string }[] }) => {
+          if (data.action === "picked") resolve(data.docs?.[0] ?? null);
+          else if (data.action === "cancel") resolve(null);
+        },
+      )
+      .build();
+    picker.setVisible(true);
+  });
+}
+
 export default function WidgetEditor({ config, initial, onSave, onCancel }: Props) {
   const [draft, setDraft] = useState<WidgetConfig>(() =>
     structuredClone(initial),
@@ -137,12 +161,18 @@ export default function WidgetEditor({ config, initial, onSave, onCancel }: Prop
           <SheetSourceFields
             draft={draft}
             patch={patch}
+            apiKey={config.googleApiKey}
             withDateColumn
             onError={setError}
           />
         )}
         {draft.type === "namedays" && (
-          <NamedaysFields draft={draft} patch={patch} onError={setError} />
+          <NamedaysFields
+            draft={draft}
+            patch={patch}
+            apiKey={config.googleApiKey}
+            onError={setError}
+          />
         )}
         {draft.type === "calendar" && (
           <CalendarFields draft={draft} patch={patch} onError={setError} />
@@ -254,12 +284,14 @@ interface SheetDraft {
 function SheetSourceFields({
   draft,
   patch,
+  apiKey,
   withDateColumn,
   withNameColumn,
   onError,
 }: {
   draft: SheetDraft;
   patch: (p: Partial<SheetDraft>) => void;
+  apiKey: string;
   withDateColumn?: boolean;
   withNameColumn?: boolean;
   onError: (msg: string | null) => void;
@@ -268,9 +300,9 @@ function SheetSourceFields({
   const [loading, setLoading] = useState(false);
   const headers = Object.keys(draft.columns);
 
-  const loadHeaders = async () => {
+  const loadHeaders = async (idOverride?: string) => {
     onError(null);
-    const id = extractSheetId(sheetInput);
+    const id = extractSheetId(idOverride ?? sheetInput);
     if (!id) {
       onError("URL o ID del foglio non valido.");
       return;
@@ -298,6 +330,18 @@ function SheetSourceFields({
     }
   };
 
+  const pickFromDrive = async () => {
+    onError(null);
+    try {
+      const doc = await pickSpreadsheet(apiKey);
+      if (!doc) return;
+      setSheetInput(doc.id);
+      await loadHeaders(doc.id);
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "Impossibile aprire il Picker.");
+    }
+  };
+
   return (
     <div className="space-y-4 rounded-xl bg-slate-800/50 p-4">
       <Field label="URL o ID del Google Sheet">
@@ -310,6 +354,18 @@ function SheetSourceFields({
             spellCheck={false}
             className="w-full rounded-lg bg-slate-800 px-3 py-2 font-mono text-xs"
           />
+          <button
+            onClick={() => void pickFromDrive()}
+            disabled={loading || !apiKey}
+            title={
+              apiKey
+                ? "Scegli il foglio da Google Drive"
+                : "Inserisci la Google API Key nelle impostazioni"
+            }
+            className="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-slate-900 hover:bg-amber-500 disabled:opacity-50"
+          >
+            📊 Da Drive
+          </button>
           <button
             onClick={() => void loadHeaders()}
             disabled={loading}
@@ -395,10 +451,12 @@ function ColumnSelect({
 function NamedaysFields({
   draft,
   patch,
+  apiKey,
   onError,
 }: {
   draft: NamedaysWidgetConfig;
   patch: (p: Partial<NamedaysWidgetConfig>) => void;
+  apiKey: string;
   onError: (msg: string | null) => void;
 }) {
   return (
@@ -426,6 +484,7 @@ function NamedaysFields({
       <SheetSourceFields
         draft={draft}
         patch={patch}
+        apiKey={apiKey}
         withDateColumn={draft.source === "sheet"}
         withNameColumn={draft.source === "builtin"}
         onError={onError}
