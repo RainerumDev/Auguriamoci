@@ -32,6 +32,8 @@ export interface FileItem {
   webViewLink?: string;
   /** Per-file playback options from the widget config. */
   options?: DriveFileOptions;
+  /** CSS padding shorthand from the owning widget's margins. */
+  margin?: string;
 }
 
 export type TimelineItem = WidgetItem | FileItem;
@@ -63,6 +65,9 @@ export function buildTimeline(
 ): TimelineEntry[] {
   const byPage = new Map<number, TimelineItem[]>();
   const fillers: TimelineItem[] = [];
+  const paddingByWidget = new Map(
+    widgets.map((w) => [w.id, widgetPadding(w)]),
+  );
 
   const place = (item: TimelineItem, page: number | null | undefined) => {
     if (page == null) {
@@ -98,6 +103,7 @@ export function buildTimeline(
         mimeType: f.mimeType,
         webViewLink: f.webViewLink,
         options: f.options,
+        margin: paddingByWidget.get(f.widgetId),
       },
       parsePagePrefix(f.name),
     );

@@ -193,19 +193,17 @@ export default function WidgetEditor({ config, initial, onSave, onCancel }: Prop
         )}
 
         {draft.type !== "drive" && (
-          <>
-            <RichTemplateEditor
-              value={draft.template}
-              placeholders={placeholdersFor(draft)}
-              onChange={(template) => patch({ template })}
-            />
-            <BackgroundField
-              background={draft.background}
-              apiKey={config.googleApiKey}
-              onChange={(background) => patch({ background })}
-            />
-          </>
+          <RichTemplateEditor
+            value={draft.template}
+            placeholders={placeholdersFor(draft)}
+            onChange={(template) => patch({ template })}
+          />
         )}
+        <BackgroundField
+          background={draft.background}
+          apiKey={config.googleApiKey}
+          onChange={(background) => patch({ background })}
+        />
 
         {error && <p className="text-sm text-red-400">{error}</p>}
 

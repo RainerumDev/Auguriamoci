@@ -44,7 +44,7 @@ export interface BaseWidgetConfig {
   margin?: string;
   /** Per-side content margins; define the rectangle where content renders. */
   margins?: WidgetMargins;
-  /** Page background image (ignored by the drive widget). */
+  /** Page background image, rendered behind the widget/media content. */
   background?: WidgetBackground;
 }
 

@@ -143,6 +143,18 @@ describe("resolveCycle", () => {
     expect(pages[0].item.kind).toBe("file");
   });
 
+  it("applies the drive widget's margins to its file items (issue #2)", () => {
+    const drive = widget("drive");
+    drive.margins = { top: "20%", right: "", bottom: "", left: "" };
+    const timeline = buildTimeline([drive], [
+      { ...file("a.jpg"), widgetId: drive.id },
+    ]);
+    const fileEntry = timeline
+      .flatMap((e) => e.candidates)
+      .find((c) => c.kind === "file");
+    expect(fileEntry).toMatchObject({ margin: "20% 0px 0px 0px" });
+  });
+
   it("carries per-file options onto timeline items", () => {
     const timeline = buildTimeline(
       [],
