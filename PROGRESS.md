@@ -107,12 +107,14 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
 
 ## Backlog / migliorie possibili
 
-- Icona 512 nativa (ora upscalata da 192)
-- Anteprima live template nell'editor widget
-- Riordino widget (drag/up-down) in impostazioni
-- Paginazione Drive listing >1000 file
+- [x] Icona 512 nativa (canvas 512px, non più upscalata)
+- [x] Riordino widget ▲▼ in impostazioni
+- [x] Paginazione Drive listing >1000 file (nextPageToken loop)
+- [x] Quota IndexedDB: StorageInfo in impostazioni (usage/quota/persisted)
+      + navigator.storage.persist() richiesto all'avvio
+- Anteprima live template nell'editor (l'editor WYSIWYG già mostra la
+  formattazione; bassa priorità)
 - Test con dati reali utente (client ID + login già attivi)
-- Gestione quota IndexedDB (StorageManager.estimate)
 
 ## Note tecniche per le prossime iterazioni
 

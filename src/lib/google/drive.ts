@@ -47,25 +47,31 @@ export function extractDriveFileId(input: string): string | null {
   return /^[a-zA-Z0-9_-]{10,}$/.test(trimmed) ? trimmed : null;
 }
 
-/** Non-trashed files inside a folder (single page, up to 1000 entries). */
+/** Non-trashed files inside a folder; follows nextPageToken (>1000 files). */
 export async function listFolderFiles(
   folderId: string,
   accessToken: string,
 ): Promise<DrivePayload> {
-  const params = new URLSearchParams({
-    q: `'${folderId.replaceAll("'", "\\'")}' in parents and trashed = false`,
-    fields: "files(id,name,mimeType,size,modifiedTime,webViewLink)",
-    pageSize: "1000",
-    orderBy: "name",
-  });
-  const data = await googleGet<{
-    files?: (Omit<DriveFileMeta, "size"> & { size?: string })[];
-  }>(`https://www.googleapis.com/drive/v3/files?${params}`, accessToken);
-
-  const files = (data.files ?? []).map((f) => ({
-    ...f,
-    size: f.size ? Number(f.size) : undefined,
-  }));
+  const files: DriveFileMeta[] = [];
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({
+      q: `'${folderId.replaceAll("'", "\\'")}' in parents and trashed = false`,
+      fields:
+        "nextPageToken,files(id,name,mimeType,size,modifiedTime,webViewLink)",
+      pageSize: "1000",
+      orderBy: "name",
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const data = await googleGet<{
+      nextPageToken?: string;
+      files?: (Omit<DriveFileMeta, "size"> & { size?: string })[];
+    }>(`https://www.googleapis.com/drive/v3/files?${params}`, accessToken);
+    for (const f of data.files ?? []) {
+      files.push({ ...f, size: f.size ? Number(f.size) : undefined });
+    }
+    pageToken = data.nextPageToken;
+  } while (pageToken);
   return { files };
 }
 

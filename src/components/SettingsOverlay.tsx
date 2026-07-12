@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createWidget,
   exportConfigJson,
@@ -409,6 +409,7 @@ export default function SettingsOverlay({
             L'export contiene layout e ID dei file Google, mai i token di
             accesso.
           </p>
+          <StorageInfo />
           <input
             ref={fileInput}
             type="file"
@@ -428,5 +429,50 @@ export default function SettingsOverlay({
         )}
       </div>
     </div>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  return `${Math.round(bytes / 1024)} KB`;
+}
+
+/** IndexedDB usage/quota + persistence state (blob-heavy signage cache). */
+function StorageInfo() {
+  const [info, setInfo] = useState<{
+    usage: number;
+    quota: number;
+    persisted: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const estimate = (await navigator.storage?.estimate?.()) ?? {};
+        const persisted = (await navigator.storage?.persisted?.()) ?? false;
+        setInfo({
+          usage: estimate.usage ?? 0,
+          quota: estimate.quota ?? 0,
+          persisted,
+        });
+      } catch {
+        setInfo(null);
+      }
+    })();
+  }, []);
+
+  if (!info) return null;
+  const pct =
+    info.quota > 0 ? Math.round((info.usage / info.quota) * 100) : null;
+  return (
+    <p className="mt-2 text-xs text-slate-500">
+      Spazio locale: {formatBytes(info.usage)}
+      {info.quota > 0 && ` su ${formatBytes(info.quota)}`}
+      {pct !== null && ` (${pct}%)`} —{" "}
+      {info.persisted
+        ? "archiviazione persistente attiva"
+        : "archiviazione non persistente (il browser può liberarla)"}
+    </p>
   );
 }

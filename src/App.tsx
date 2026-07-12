@@ -13,6 +13,9 @@ export default function App() {
   const [state, setState] = useState<AppState>({ phase: "loading" });
 
   useEffect(() => {
+    // Signage runs unattended: ask the browser not to evict IndexedDB
+    // (media blobs, cached datasets) under storage pressure.
+    void navigator.storage?.persist?.();
     loadConfig().then((config) => {
       setState(config ? { phase: "player", config } : { phase: "onboarding" });
     });
