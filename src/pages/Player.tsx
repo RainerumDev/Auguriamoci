@@ -95,6 +95,20 @@ export default function Player({ config, onConfigChange }: Props) {
     isAvailable,
   ]);
 
+  // Operator shortcuts: arrows skip pages manually (useful when checking
+  // the content on the actual screen). The autoplay timer then restarts.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (settingsOpen || cycle.length === 0) return;
+      if (e.key === "ArrowRight") advance();
+      if (e.key === "ArrowLeft") {
+        setPageIndex((i) => (i - 1 + cycle.length) % cycle.length);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [advance, cycle.length, settingsOpen]);
+
   useEffect(() => {
     const current = cycle[pageIndex];
     if (!current) return;

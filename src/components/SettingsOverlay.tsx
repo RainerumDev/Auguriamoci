@@ -34,6 +34,17 @@ export default function SettingsOverlay({
   const [apiKeyDraft, setApiKeyDraft] = useState(config.googleApiKey);
   const [editing, setEditing] = useState<WidgetConfig | null>(null);
 
+  // Escape backs out one level: widget editor first, then the overlay.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (editing) setEditing(null);
+      else onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, editing]);
+
   const saveWidget = (widget: WidgetConfig) => {
     const exists = config.widgets.some((w) => w.id === widget.id);
     onConfigChange({
