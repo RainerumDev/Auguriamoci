@@ -192,9 +192,10 @@ export default function Player({ config, onConfigChange }: Props) {
         </div>
       )}
 
-      {/* Expired Google session: data keeps playing from cache, but the next
+      {/* Expired Google session AND sync actually blocked (no API-key
+          fallback possible): data keeps playing from cache, but the next
           sync needs a new sign-in. */}
-      {auth.status === "expired" && (
+      {auth.status === "expired" && sync.lastReport?.blocked && (
         <div
           title="Sessione Google scaduta: accedi di nuovo dalle impostazioni"
           className="absolute top-4 left-4 text-3xl opacity-40 select-none"

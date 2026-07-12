@@ -58,9 +58,28 @@ IndexedDB per la riproduzione offline.
      - `https://<utente>.github.io` (produzione)
 5. Copia il **Client ID** e incollalo nelle impostazioni dell'app
    (⚙️ → Account Google).
-6. *(Facoltativo, per il Google Picker)* **Credenziali → Crea credenziali →
-   Chiave API**: copia la **API key** nelle impostazioni. Senza chiave i
-   pulsanti "Da Drive" restano disabilitati e si usa l'URL/ID incollato.
+6. *(Facoltativo, per il Google Picker e il sync senza login)* **Credenziali
+   → Crea credenziali → Chiave API**: copia la **API key** nelle
+   impostazioni. Consigliato: restringi la chiave per referrer HTTP
+   (`https://<utente>.github.io/*` e `http://localhost:5173/*`) e alle sole
+   API Sheets/Drive/Calendar.
+
+## Sorgenti pubbliche: sync senza login (consigliato per i totem)
+
+Il token OAuth dura ~1 ora e senza backend non esiste refresh token: su uno
+schermo non presidiato la sessione scade. Se le sorgenti sono **pubbliche**,
+l'app sincronizza per sempre con la sola API key, senza login:
+
+- **Foglio**: Condividi → "Chiunque abbia il link" → Visualizzatore.
+- **Cartella Drive**: Condividi → "Chiunque abbia il link" → Visualizzatore
+  (vale per i file contenuti e per le immagini di sfondo).
+- **Calendario**: Impostazioni calendario → Autorizzazioni di accesso →
+  "Rendi disponibile pubblicamente".
+
+Con token scaduto/assente l'app passa da sola all'API key; le sorgenti
+rimaste private falliscono con l'errore "Sorgente non pubblica" nel
+riepilogo sync (impostazioni). Il login Google resta necessario solo per
+configurare (Picker, elenco calendari, lettura intestazioni).
 
 ## Sviluppo
 

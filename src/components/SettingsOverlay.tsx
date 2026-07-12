@@ -234,6 +234,11 @@ export default function SettingsOverlay({
           {auth.error && (
             <p className="mt-2 text-sm text-red-400">{auth.error}</p>
           )}
+          <p className="mt-3 text-xs text-slate-500">
+            💡 Se foglio, calendario e cartella Drive sono <b>pubblici</b>{" "}
+            ("chiunque con il link"), la sincronizzazione continua anche a
+            sessione scaduta usando la sola API key: ideale per i totem.
+          </p>
         </section>
 
         <section className="mb-8">

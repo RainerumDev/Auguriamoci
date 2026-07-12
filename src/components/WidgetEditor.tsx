@@ -316,7 +316,7 @@ function SheetSourceFields({
     setLoading(true);
     try {
       const token = requireToken();
-      const payload = await fetchSheet(id, draft.sheetRange, token);
+      const payload = await fetchSheet(id, draft.sheetRange, { accessToken: token });
       if (payload.header.length === 0) {
         throw new Error("Il foglio è vuoto: nessuna intestazione trovata.");
       }
@@ -691,7 +691,7 @@ function DriveFields({
     setLoadingFiles(true);
     try {
       const token = requireToken();
-      const payload = await listFolderFiles(folderId, token);
+      const payload = await listFolderFiles(folderId, { accessToken: token });
       setFiles(payload.files);
       if (payload.files.length === 0) {
         setDriveError("La cartella è vuota.");

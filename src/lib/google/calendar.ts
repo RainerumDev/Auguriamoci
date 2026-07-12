@@ -1,5 +1,5 @@
 /** Google Calendar API v3 connector (read-only). */
-import { googleGet } from "./api";
+import { googleGet, type GoogleAuth } from "./api";
 
 export interface CalendarListEntry {
   id: string;
@@ -22,17 +22,19 @@ export interface CalendarPayload {
   events: CalendarEventData[];
 }
 
-/** Calendars visible to the signed-in account (for the widget editor). */
+/**
+ * Calendars visible to the signed-in account (widget editor only):
+ * inherently OAuth, an API key has no account to enumerate.
+ */
 export async function listCalendars(
   accessToken: string,
 ): Promise<CalendarListEntry[]> {
   const url =
     "https://www.googleapis.com/calendar/v3/users/me/calendarList" +
     "?fields=items(id,summary,primary)&maxResults=250";
-  const data = await googleGet<{ items?: CalendarListEntry[] }>(
-    url,
+  const data = await googleGet<{ items?: CalendarListEntry[] }>(url, {
     accessToken,
-  );
+  });
   return data.items ?? [];
 }
 
@@ -50,7 +52,7 @@ interface ApiEvent {
 export async function fetchEvents(
   calendarId: string,
   lookAheadDays: number,
-  accessToken: string,
+  auth: GoogleAuth,
 ): Promise<CalendarPayload> {
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
@@ -68,7 +70,7 @@ export async function fetchEvents(
   const url =
     `https://www.googleapis.com/calendar/v3/calendars/` +
     `${encodeURIComponent(calendarId)}/events?${params}`;
-  const data = await googleGet<{ items?: ApiEvent[] }>(url, accessToken);
+  const data = await googleGet<{ items?: ApiEvent[] }>(url, auth);
 
   const events = (data.items ?? [])
     .filter((e) => e.status !== "cancelled")

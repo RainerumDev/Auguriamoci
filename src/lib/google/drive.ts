@@ -1,5 +1,5 @@
 /** Google Drive API v3 connector (read-only). */
-import { googleGet, googleGetBlob } from "./api";
+import { googleGet, googleGetBlob, type GoogleAuth } from "./api";
 
 /** Per-file download cap: signage media beyond this is skipped (PRD: "blob leggeri"). */
 export const MAX_MEDIA_BYTES = 150 * 1024 * 1024;
@@ -50,7 +50,7 @@ export function extractDriveFileId(input: string): string | null {
 /** Non-trashed files inside a folder; follows nextPageToken (>1000 files). */
 export async function listFolderFiles(
   folderId: string,
-  accessToken: string,
+  auth: GoogleAuth,
 ): Promise<DrivePayload> {
   const files: DriveFileMeta[] = [];
   let pageToken: string | undefined;
@@ -66,7 +66,7 @@ export async function listFolderFiles(
     const data = await googleGet<{
       nextPageToken?: string;
       files?: (Omit<DriveFileMeta, "size"> & { size?: string })[];
-    }>(`https://www.googleapis.com/drive/v3/files?${params}`, accessToken);
+    }>(`https://www.googleapis.com/drive/v3/files?${params}`, auth);
     for (const f of data.files ?? []) {
       files.push({ ...f, size: f.size ? Number(f.size) : undefined });
     }
@@ -94,10 +94,10 @@ export function isEmbeddable(file: DriveFileMeta): boolean {
 
 export async function downloadFileBlob(
   fileId: string,
-  accessToken: string,
+  auth: GoogleAuth,
 ): Promise<Blob> {
   return googleGetBlob(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
-    accessToken,
+    auth,
   );
 }

@@ -1,5 +1,11 @@
 /** Shared fetch helper for the Google REST APIs. */
 
+/**
+ * OAuth access token (private sources) or bare API key (public sources:
+ * sheets/calendars/files shared with "anyone with the link").
+ */
+export type GoogleAuth = { accessToken: string } | { apiKey: string };
+
 export class GoogleApiError extends Error {
   constructor(
     message: string,
@@ -9,19 +15,28 @@ export class GoogleApiError extends Error {
     this.name = "GoogleApiError";
   }
 
-  /** True when the access token was rejected (expired/revoked). */
+  /** True when the credential was rejected (expired/revoked/not public). */
   get isAuthError(): boolean {
     return this.status === 401 || this.status === 403;
   }
 }
 
-export async function googleGet<T>(
+/** Bearer header for tokens; `key=` query parameter for API keys. */
+export function applyAuth(
   url: string,
-  accessToken: string,
-): Promise<T> {
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  auth: GoogleAuth,
+): { url: string; headers: Record<string, string> } {
+  if ("accessToken" in auth) {
+    return { url, headers: { Authorization: `Bearer ${auth.accessToken}` } };
+  }
+  const withKey = new URL(url);
+  withKey.searchParams.set("key", auth.apiKey);
+  return { url: withKey.toString(), headers: {} };
+}
+
+export async function googleGet<T>(url: string, auth: GoogleAuth): Promise<T> {
+  const req = applyAuth(url, auth);
+  const res = await fetch(req.url, { headers: req.headers });
   if (!res.ok) {
     throw new GoogleApiError(await readErrorMessage(res), res.status);
   }
@@ -30,11 +45,10 @@ export async function googleGet<T>(
 
 export async function googleGetBlob(
   url: string,
-  accessToken: string,
+  auth: GoogleAuth,
 ): Promise<Blob> {
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const req = applyAuth(url, auth);
+  const res = await fetch(req.url, { headers: req.headers });
   if (!res.ok) {
     throw new GoogleApiError(await readErrorMessage(res), res.status);
   }

@@ -43,6 +43,20 @@ export function useAuth(clientId: string): AuthState {
     }
   }, [clientId]);
 
+  // Renew ~5 minutes BEFORE expiry: the silent flow succeeds far more often
+  // while the previous grant is still warm than hours after it lapsed.
+  useEffect(() => {
+    if (!clientId || !isTokenValid(token)) return;
+    const delay = Math.max(30_000, token.expiresAt - Date.now() - 5 * 60_000);
+    const timer = window.setTimeout(() => {
+      if (!navigator.onLine) return;
+      void trySilentRefresh(clientId).then((renewed) => {
+        if (renewed) setToken(renewed);
+      });
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [clientId, token]);
+
   const signIn = useCallback(async () => {
     setBusy(true);
     setError(null);

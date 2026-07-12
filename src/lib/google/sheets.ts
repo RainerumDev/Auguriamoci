@@ -1,5 +1,5 @@
 /** Google Sheets API v4 connector (read-only). */
-import { googleGet } from "./api";
+import { googleGet, type GoogleAuth } from "./api";
 
 export interface SheetPayload {
   /** First row of the sheet, used for column mapping. */
@@ -26,13 +26,13 @@ export function extractSheetId(input: string): string | null {
 export async function fetchSheet(
   sheetId: string,
   range: string,
-  accessToken: string,
+  auth: GoogleAuth,
 ): Promise<SheetPayload> {
   const effectiveRange = range.trim() ? `${quoteTab(range.trim())}!A:ZZ` : "A:ZZ";
   const url =
     `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}` +
     `/values/${encodeURIComponent(effectiveRange)}?majorDimension=ROWS`;
-  const data = await googleGet<{ values?: string[][] }>(url, accessToken);
+  const data = await googleGet<{ values?: string[][] }>(url, auth);
   const values = data.values ?? [];
   const [header = [], ...rows] = values;
   return { header: header.map((h) => h.trim()), rows };

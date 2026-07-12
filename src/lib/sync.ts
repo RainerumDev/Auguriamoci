@@ -9,7 +9,7 @@
 import { db } from "./db";
 import type { AppConfig, WidgetConfig } from "./config";
 import { getStoredToken, isTokenValid, trySilentRefresh } from "./google/auth";
-import { GoogleApiError } from "./google/api";
+import { GoogleApiError, type GoogleAuth } from "./google/api";
 import { fetchSheet } from "./google/sheets";
 import { fetchEvents } from "./google/calendar";
 import {
@@ -56,22 +56,32 @@ export async function syncAll(config: AppConfig): Promise<SyncReport> {
       ? await trySilentRefresh(config.googleClientId)
       : null;
   }
-  if (!isTokenValid(token)) {
-    report.blocked = "Sessione Google scaduta: accedi dalle impostazioni.";
+
+  // Signed in -> OAuth. Otherwise fall back to the bare API key, which the
+  // Google APIs accept for PUBLIC sources ("anyone with the link"): the
+  // kiosk keeps syncing forever without a Google session.
+  let auth: GoogleAuth;
+  if (isTokenValid(token)) {
+    auth = { accessToken: token.accessToken };
+  } else if (config.googleApiKey) {
+    auth = { apiKey: config.googleApiKey };
+  } else {
+    report.blocked =
+      "Sessione Google scaduta e nessuna API key configurata: accedi dalle impostazioni.";
     return finish(report);
   }
-  const accessToken = token.accessToken;
+  const usingApiKey = "apiKey" in auth;
 
   for (const widget of config.widgets.filter((w) => w.enabled)) {
     try {
-      await syncWidget(widget, accessToken);
+      await syncWidget(widget, auth);
       report.results.push({ widgetId: widget.id, title: widget.title, ok: true });
     } catch (e) {
       report.results.push({
         widgetId: widget.id,
         title: widget.title,
         ok: false,
-        error: userMessage(e),
+        error: userMessage(e, usingApiKey),
       });
     }
   }
@@ -82,15 +92,15 @@ export async function syncAll(config: AppConfig): Promise<SyncReport> {
 
 async function syncWidget(
   widget: WidgetConfig,
-  accessToken: string,
+  auth: GoogleAuth,
 ): Promise<void> {
-  await syncBackground(widget, accessToken);
+  await syncBackground(widget, auth);
   switch (widget.type) {
     case "birthdays": {
       const payload = await fetchSheet(
         widget.sheetId,
         widget.sheetRange,
-        accessToken,
+        auth,
       );
       await db.datasets.put({
         widgetId: widget.id,
@@ -107,7 +117,7 @@ async function syncWidget(
       const payload = await fetchSheet(
         widget.sheetId,
         widget.sheetRange,
-        accessToken,
+        auth,
       );
       await db.datasets.put({
         widgetId: widget.id,
@@ -121,7 +131,7 @@ async function syncWidget(
       const payload = await fetchEvents(
         widget.calendarId,
         widget.lookAheadDays,
-        accessToken,
+        auth,
       );
       await db.datasets.put({
         widgetId: widget.id,
@@ -132,7 +142,7 @@ async function syncWidget(
       return;
     }
     case "drive": {
-      const payload = await listFolderFiles(widget.folderId, accessToken);
+      const payload = await listFolderFiles(widget.folderId, auth);
       for (const file of payload.files) {
         if (widget.fileOptions?.[file.id]?.skip) continue;
         if (!isDownloadableMedia(file)) {
@@ -149,7 +159,7 @@ async function syncWidget(
         if (cached && cached.updatedAt >= Date.parse(file.modifiedTime)) {
           continue; // Blob already fresh.
         }
-        const blob = await downloadFileBlob(file.id, accessToken);
+        const blob = await downloadFileBlob(file.id, auth);
         await db.media.put({
           fileId: file.id,
           name: file.name,
@@ -172,12 +182,12 @@ async function syncWidget(
 /** Cache the page-background Drive file, once (no modifiedTime tracking). */
 async function syncBackground(
   widget: WidgetConfig,
-  accessToken: string,
+  auth: GoogleAuth,
 ): Promise<void> {
   const bg = widget.background;
   if (bg?.source !== "drive" || !bg.fileId) return;
   if (await db.media.get(bg.fileId)) return;
-  const blob = await downloadFileBlob(bg.fileId, accessToken);
+  const blob = await downloadFileBlob(bg.fileId, auth);
   await db.media.put({
     fileId: bg.fileId,
     name: "background",
@@ -218,9 +228,11 @@ async function finish(report: SyncReport): Promise<SyncReport> {
   return report;
 }
 
-function userMessage(e: unknown): string {
+function userMessage(e: unknown, usingApiKey: boolean): string {
   if (e instanceof GoogleApiError && e.isAuthError) {
-    return "Permessi Google insufficienti o sessione scaduta.";
+    return usingApiKey
+      ? "Sorgente non pubblica: accedi con Google oppure rendi pubblica la risorsa (chiunque con il link)."
+      : "Permessi Google insufficienti o sessione scaduta.";
   }
   return e instanceof Error ? e.message : "Errore sconosciuto.";
 }
