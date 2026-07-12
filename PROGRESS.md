@@ -143,3 +143,12 @@ File letto/aggiornato ad ogni iterazione del loop. Fonte di verità: PROMPT.md (
   (licenza1@juvenes.it) — OAuth end-to-end confermato funzionante. Client ID
   in config IndexedDB: NON sovrascrivere/cancellare. Niente fetch dei suoi
   dati reali (calendari/fogli) senza richiesta esplicita.
+- **Iter 7 (2026-07-11/12):** polish/deploy + tutte le richieste utente
+  (editor WYSIWYG, cursore, sfondi, picker, per-file options, {periodo},
+  AutoFitPage, margini per lato + selettore rettangolo, riordino ▲▼),
+  backlog chiuso (icona 512, paginazione Drive, quota storage), hardening
+  (roundtrip config test, SW verificato su build, scorciatoie tastiera,
+  ⚠️ sync, auto-apertura impostazioni al primo avvio). 63 test verdi.
+
+**Stato: COMPLETO.** Da qui solo manutenzione; ciò che resta richiede
+l'utente (test su schermo reale, attivazione GitHub Pages).
