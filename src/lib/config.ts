@@ -52,6 +52,10 @@ export interface BaseWidgetConfig {
 export function widgetPadding(w: BaseWidgetConfig): string | undefined {
   if (w.margins) {
     const { top, right, bottom, left } = w.margins;
+    // All sides untouched -> no override: the player default applies.
+    if (!top.trim() && !right.trim() && !bottom.trim() && !left.trim()) {
+      return w.margin;
+    }
     return `${top || "0px"} ${right || "0px"} ${bottom || "0px"} ${left || "0px"}`;
   }
   return w.margin;

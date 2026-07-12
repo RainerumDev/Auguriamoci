@@ -6,7 +6,7 @@ import {
   type DriveFileForTimeline,
   type TimelineItem,
 } from "../timeline";
-import { createWidget, type WidgetConfig } from "../config";
+import { createWidget, widgetPadding, type WidgetConfig } from "../config";
 
 function widget(
   type: WidgetConfig["type"],
@@ -97,6 +97,26 @@ describe("buildTimeline", () => {
     const timeline = buildTimeline([b], [file("z.jpg")]);
     expect(timeline.map((e) => e.page)).toEqual([1, 2]);
     expect(timeline[0].candidates[0]).toMatchObject({ widgetId: b.id });
+  });
+});
+
+describe("widgetPadding", () => {
+  it("builds the shorthand from per-side margins, 0px for empty sides", () => {
+    const w = createWidget("birthdays");
+    w.margins = { top: "10%", right: "", bottom: "2rem", left: "20px" };
+    expect(widgetPadding(w)).toBe("10% 0px 2rem 20px");
+  });
+
+  it("falls back to the player default when every side is empty", () => {
+    const w = createWidget("birthdays");
+    w.margins = { top: "", right: "", bottom: "", left: "" };
+    expect(widgetPadding(w)).toBeUndefined();
+  });
+
+  it("honors the legacy single margin", () => {
+    const w = createWidget("birthdays");
+    w.margin = "2rem";
+    expect(widgetPadding(w)).toBe("2rem");
   });
 });
 
