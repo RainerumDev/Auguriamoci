@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "../lib/db";
-import type { AppConfig } from "../lib/config";
+import { resolveDriveFileOptions, type AppConfig } from "../lib/config";
 import type { SheetPayload } from "../lib/google/sheets";
 import type { CalendarPayload } from "../lib/google/calendar";
 import type { DrivePayload } from "../lib/google/drive";
@@ -107,8 +107,8 @@ export function usePresentation(
           case "drive":
             if (dataset.kind === "drive") {
               for (const f of (dataset.payload as DrivePayload).files) {
-                const options = widget.fileOptions?.[f.id];
-                if (options?.skip) continue;
+                const options = resolveDriveFileOptions(widget, f.id);
+                if (options.skip) continue;
                 driveFiles.push({
                   widgetId: widget.id,
                   fileId: f.id,

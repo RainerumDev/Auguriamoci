@@ -738,6 +738,25 @@ function DriveFields({
         </p>
       )}
 
+      <Field label="Adattamento predefinito immagini (vale anche per i file aggiunti in futuro)">
+        <select
+          value={draft.defaultObjectFit ?? "cover"}
+          onChange={(e) =>
+            patch({
+              defaultObjectFit: e.target.value as
+                | "contain"
+                | "cover"
+                | "fill",
+            })
+          }
+          className="rounded-lg bg-slate-800 px-3 py-2 text-sm"
+        >
+          <option value="cover">Cover (riempie, ritaglia)</option>
+          <option value="contain">Contain (tutta visibile, bande)</option>
+          <option value="fill">Fill (allunga a tutto schermo)</option>
+        </select>
+      </Field>
+
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -825,16 +844,20 @@ function DriveFields({
                   <label className="flex items-center gap-1 text-xs whitespace-nowrap">
                     Fit:
                     <select
-                      value={opts.objectFit ?? "cover"}
+                      value={opts.objectFit ?? ""}
                       onChange={(e) =>
                         patchFileOption(file.id, {
-                          objectFit: e.target.value as "contain" | "cover",
+                          objectFit: e.target.value
+                            ? (e.target.value as "contain" | "cover" | "fill")
+                            : undefined,
                         })
                       }
                       className="rounded bg-slate-700 px-2 py-0.5 text-xs"
                     >
+                      <option value="">Predefinito</option>
                       <option value="cover">Cover</option>
                       <option value="contain">Contain</option>
+                      <option value="fill">Fill</option>
                     </select>
                   </label>
                 )}

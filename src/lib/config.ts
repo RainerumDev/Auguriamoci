@@ -120,6 +120,23 @@ export interface DriveWidgetConfig extends BaseWidgetConfig {
   folderLabel: string;
   /** Opzioni specifiche per i singoli file. La chiave è l'ID del file. */
   fileOptions?: Record<string, DriveFileOptions>;
+  /**
+   * Adattamento predefinito per tutte le immagini della cartella (anche
+   * quelle aggiunte in futuro); il per-file `objectFit` lo sovrascrive.
+   */
+  defaultObjectFit?: "contain" | "cover" | "fill";
+}
+
+/** Per-file options with the widget-wide default fit applied as fallback. */
+export function resolveDriveFileOptions(
+  widget: DriveWidgetConfig,
+  fileId: string,
+): DriveFileOptions {
+  const options = { ...widget.fileOptions?.[fileId] };
+  if (options.objectFit == null && widget.defaultObjectFit) {
+    options.objectFit = widget.defaultObjectFit;
+  }
+  return options;
 }
 
 export type WidgetConfig =

@@ -4,8 +4,36 @@ import {
   createWidget,
   exportConfigJson,
   parseConfigJson,
+  resolveDriveFileOptions,
   type DriveWidgetConfig,
 } from "../config";
+
+describe("resolveDriveFileOptions", () => {
+  const widget = (over: Partial<DriveWidgetConfig>) =>
+    ({ ...createWidget("drive"), ...over }) as DriveWidgetConfig;
+
+  it("applies the widget default fit to files without their own", () => {
+    const w = widget({ defaultObjectFit: "fill" });
+    expect(resolveDriveFileOptions(w, "f1")).toEqual({ objectFit: "fill" });
+  });
+
+  it("lets the per-file fit win over the default", () => {
+    const w = widget({
+      defaultObjectFit: "fill",
+      fileOptions: { f1: { objectFit: "contain", skip: true } },
+    });
+    expect(resolveDriveFileOptions(w, "f1")).toEqual({
+      objectFit: "contain",
+      skip: true,
+    });
+  });
+
+  it("returns bare per-file options when no default is set", () => {
+    const w = widget({ fileOptions: { f1: { audioEnabled: true } } });
+    expect(resolveDriveFileOptions(w, "f1")).toEqual({ audioEnabled: true });
+    expect(resolveDriveFileOptions(w, "unknown")).toEqual({});
+  });
+});
 
 describe("config export/import roundtrip", () => {
   it("preserves every field, including the newer ones", () => {
