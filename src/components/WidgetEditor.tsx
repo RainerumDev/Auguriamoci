@@ -580,6 +580,27 @@ function CalendarFields({
           className="w-28 rounded-lg bg-slate-800 px-3 py-2 text-sm"
         />
       </Field>
+      <Field label="Numero massimo di eventi (0 = nessun limite)">
+        <input
+          type="number"
+          min={0}
+          max={100}
+          value={draft.maxEvents ?? 0}
+          onChange={(e) => {
+            const n = Math.max(0, Number(e.target.value) || 0);
+            patch({ maxEvents: n === 0 ? undefined : n });
+          }}
+          className="w-28 rounded-lg bg-slate-800 px-3 py-2 text-sm"
+        />
+      </Field>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={draft.includeOngoing ?? true}
+          onChange={(e) => patch({ includeOngoing: e.target.checked })}
+        />
+        Includi gli eventi già iniziati (in corso)
+      </label>
     </div>
   );
 }

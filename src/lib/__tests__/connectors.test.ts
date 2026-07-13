@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { extractSheetId, rowsToObjects } from "../google/sheets";
 import { extractFolderId, isDownloadableMedia } from "../google/drive";
+import { fetchEvents } from "../google/calendar";
 import { parseConfigJson, exportConfigJson, DEFAULT_CONFIG } from "../config";
 
 describe("extractSheetId", () => {
@@ -89,6 +90,40 @@ describe("isDownloadableMedia", () => {
     expect(
       isDownloadableMedia({ ...base, mimeType: "application/pdf", size: 10 }),
     ).toBe(false);
+  });
+});
+
+describe("fetchEvents with API-key auth (expired session, public calendar)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("sends the key in the URL (no Bearer header) and parses events", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [
+            {
+              id: "e1",
+              summary: "Messa",
+              start: { dateTime: "2026-07-12T10:00:00Z" },
+              end: { dateTime: "2026-07-12T11:00:00Z" },
+              status: "confirmed",
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const payload = await fetchEvents("public@group.calendar.google.com", 7, {
+      apiKey: "AIza-K",
+    });
+
+    expect(payload.events).toHaveLength(1);
+    expect(payload.events[0].title).toBe("Messa");
+    const [calledUrl, init] = fetchMock.mock.calls[0];
+    expect(calledUrl).toContain("key=AIza-K");
+    expect(init.headers).toEqual({});
   });
 });
 

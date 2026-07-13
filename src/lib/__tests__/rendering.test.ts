@@ -220,6 +220,51 @@ describe("buildCalendarItems", () => {
     expect(items).toHaveLength(1);
     expect(items[0].html).toBe("Festa[]");
   });
+
+  const timedEvent = (id: string, startH: number, endH: number) => ({
+    id,
+    title: "E" + id,
+    description: "",
+    location: "",
+    start: new Date(2026, 6, 11, startH, 0).toISOString(),
+    end: new Date(2026, 6, 11, endH, 0).toISOString(),
+    allDay: false,
+  });
+
+  it("caps the number of events with maxEvents", () => {
+    const events = [
+      timedEvent("1", 11, 12),
+      timedEvent("2", 13, 14),
+      timedEvent("3", 15, 16),
+    ];
+    const items = buildCalendarItems(
+      { lookAheadDays: 1, template: "{titolo}", maxEvents: 2 },
+      { events },
+      now,
+    );
+    expect(items).toHaveLength(2);
+    expect(items.map((i) => i.html)).toEqual(["E1", "E2"]);
+  });
+
+  it("hides in-progress events when includeOngoing is false", () => {
+    const events = [
+      timedEvent("ongoing", 9, 12), // started at 09:00, now is 10:00
+      timedEvent("upcoming", 15, 16),
+    ];
+    const upcomingOnly = buildCalendarItems(
+      { lookAheadDays: 1, template: "{titolo}", includeOngoing: false },
+      { events },
+      now,
+    );
+    expect(upcomingOnly.map((i) => i.html)).toEqual(["Eupcoming"]);
+
+    const withOngoing = buildCalendarItems(
+      { lookAheadDays: 1, template: "{titolo}", includeOngoing: true },
+      { events },
+      now,
+    );
+    expect(withOngoing.map((i) => i.html)).toEqual(["Eongoing", "Eupcoming"]);
+  });
 });
 
 describe("{periodo} smart formatting", () => {
@@ -267,6 +312,15 @@ describe("{periodo} smart formatting", () => {
         start: new Date(2026, 6, 12, 10, 0).toISOString(),
       }),
     ).toBe("domenica 12 luglio alle 10:00");
+  });
+
+  it("same day, start == end time: 'alle X' not 'dalle X alle X'", () => {
+    expect(
+      periodo({
+        start: new Date(2026, 6, 12, 12, 0).toISOString(),
+        end: new Date(2026, 6, 12, 12, 0).toISOString(),
+      }),
+    ).toBe("domenica 12 luglio alle 12:00");
   });
 
   it("single all-day event: day only (exclusive end handled)", () => {

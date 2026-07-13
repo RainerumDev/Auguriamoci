@@ -112,13 +112,16 @@ export default function Player({ config, onConfigChange }: Props) {
   useEffect(() => {
     const current = cycle[pageIndex];
     if (!current) return;
-    // Auto-duration videos advance on their 'ended' event (Stage callback);
-    // the long timeout is only a safety net if the video never ends.
+    // These drive their own advance via Stage's onMediaEnd/onDone callback:
+    // auto-duration videos (on 'ended') and widget pages (after the last
+    // sub-page, so a multi-page calendar lasts duration × sub-pages). The
+    // timeout here is only a safety net if that callback never fires.
     const isAutoVideo =
       current.item.kind === "file" &&
       current.item.mimeType.startsWith("video/") &&
       current.item.options?.autoDuration === true;
-    const ms = isAutoVideo ? 15 * 60_000 : current.durationSeconds * 1000;
+    const selfPaced = isAutoVideo || current.item.kind === "widget";
+    const ms = selfPaced ? 15 * 60_000 : current.durationSeconds * 1000;
     const timer = window.setTimeout(advance, ms);
     return () => window.clearTimeout(timer);
   }, [cycle, pageIndex, advance]);

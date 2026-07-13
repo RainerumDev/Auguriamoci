@@ -188,9 +188,16 @@ function formatPeriodo(start: Date, end: Date, allDay: boolean): string {
  * Calendar events (PRD §6.3). Fixed placeholders: {titolo} {data_inizio}
  * {ora_inizio} {data_fine} {ora_fine} {periodo} {descrizione} {luogo}.
  * Events already ended are dropped (cached data may be hours old).
+ *
+ * `includeOngoing` (default true): when false, events already started
+ * (start < now) are hidden — only upcoming ones show. `maxEvents`
+ * (0/undefined = no cap): keep at most this many, soonest first.
  */
 export function buildCalendarItems(
-  widget: Pick<CalendarWidgetConfig, "lookAheadDays" | "template">,
+  widget: Pick<
+    CalendarWidgetConfig,
+    "lookAheadDays" | "template" | "maxEvents" | "includeOngoing"
+  >,
   payload: CalendarPayload,
   now: Date,
 ): RenderItem[] {
@@ -199,12 +206,15 @@ export function buildCalendarItems(
     now.getMonth(),
     now.getDate() + Math.max(0, widget.lookAheadDays) + 1,
   );
+  const includeOngoing = widget.includeOngoing ?? true;
   const items: RenderItem[] = [];
   for (const event of payload.events) {
     const start = new Date(event.start);
     if (Number.isNaN(start.getTime())) continue;
     const end = new Date(event.end || event.start);
     if (end < now || start >= windowEnd) continue;
+    // Skip events already in progress unless explicitly requested.
+    if (!includeOngoing && start < now) continue;
     const startOfEventDay = new Date(
       start.getFullYear(),
       start.getMonth(),
@@ -238,6 +248,9 @@ export function buildCalendarItems(
       ),
     });
   }
-  return items;
+  // Events arrive already sorted by start time (API orderBy=startTime).
+  return widget.maxEvents && widget.maxEvents > 0
+    ? items.slice(0, widget.maxEvents)
+    : items;
 }
 

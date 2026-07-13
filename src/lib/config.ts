@@ -102,6 +102,10 @@ export interface CalendarWidgetConfig extends BaseWidgetConfig {
   calendarId: string;
   calendarLabel: string;
   lookAheadDays: number;
+  /** Max events to show after filtering (0/undefined = no cap). */
+  maxEvents?: number;
+  /** Show events already started (default true); false = upcoming only. */
+  includeOngoing?: boolean;
   /** Template fields: {titolo} {data_inizio} {ora_inizio} {descrizione} {luogo}. */
   template: string;
 }

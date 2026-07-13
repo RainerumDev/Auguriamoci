@@ -90,6 +90,7 @@ export default function Stage({
           items={renderData.get(item.widgetId) ?? []}
           margin={item.margin}
           durationSeconds={page.durationSeconds}
+          onDone={onMediaEnd}
         />
       </div>
     );

@@ -5,16 +5,16 @@ interface Props {
   items: RenderItem[];
   /** CSS margin around the content (widget config), e.g. "2rem". */
   margin?: string;
-  /** Page duration: sub-pages share it equally. */
+  /** Duration of EACH sub-page (seconds): total = duration × sub-pages. */
   durationSeconds: number;
+  /** Called after the last sub-page has shown for its full duration. */
+  onDone?: () => void;
 }
 
 /** Below this scale the text becomes unreadable: switch to sub-pages. */
 const MIN_SCALE = 0.6;
 /** Vertical gap between items (px); must match the gap-10 class. */
 const ITEM_GAP = 40;
-/** Never rotate sub-pages faster than this (ms). */
-const MIN_SUBPAGE_MS = 3000;
 
 type Layout =
   | { phase: "measuring" }
@@ -26,13 +26,26 @@ type Layout =
  * 1. measure the rendered items inside the available (margin-inset) box;
  * 2. everything fits -> show as-is; slightly too tall -> scale down to fit;
  * 3. would need scale < MIN_SCALE -> split the items into sub-pages that
- *    rotate within the page duration (many birthdays / events case).
+ *    rotate one after another (many birthdays / events case).
+ *
+ * Each sub-page is shown for the FULL page duration, so a calendar that
+ * spills onto N sub-pages stays on screen N × duration and drives the
+ * player's advance via onDone (like an auto-duration video).
  */
-export default function AutoFitPage({ items, margin, durationSeconds }: Props) {
+export default function AutoFitPage({
+  items,
+  margin,
+  durationSeconds,
+  onDone,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const [layout, setLayout] = useState<Layout>({ phase: "measuring" });
   const [subPage, setSubPage] = useState(0);
+
+  // Keep the latest onDone without restarting the sub-page timer.
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   // New content or a resize invalidates the measurement.
   useLayoutEffect(() => {
@@ -85,19 +98,21 @@ export default function AutoFitPage({ items, margin, durationSeconds }: Props) {
     setLayout({ phase: "paged", chunks });
   }, [layout]);
 
-  // Rotate sub-pages so the whole list is seen within the page duration.
+  // Each sub-page shows for the full duration; after the last one, hand the
+  // advance back to the player (onDone). A single page still calls onDone,
+  // so the player can rely on it uniformly for widget pages.
   useEffect(() => {
-    if (layout.phase !== "paged" || layout.chunks.length <= 1) return;
-    const ms = Math.max(
-      MIN_SUBPAGE_MS,
-      (durationSeconds * 1000) / layout.chunks.length,
-    );
-    const timer = window.setInterval(
-      () => setSubPage((p) => (p + 1) % layout.chunks.length),
-      ms,
-    );
-    return () => window.clearInterval(timer);
-  }, [layout, durationSeconds]);
+    if (layout.phase === "measuring") return;
+    const subPages = layout.phase === "paged" ? layout.chunks.length : 1;
+    const timer = window.setTimeout(() => {
+      if (subPage + 1 < subPages) {
+        setSubPage(subPage + 1);
+      } else {
+        onDoneRef.current?.();
+      }
+    }, durationSeconds * 1000);
+    return () => window.clearTimeout(timer);
+  }, [layout, subPage, durationSeconds]);
 
   const itemDivs = (indices: number[]) =>
     indices.map((i) => (
